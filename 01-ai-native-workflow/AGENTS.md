@@ -5,6 +5,10 @@ Household chores app: recurring chores (daily, weekly, monthly) rotate between m
 Stack: FastAPI, SQLAlchemy, SQLite, Alembic (`backend/`); React, Vite, TypeScript, Vitest (`frontend/`).
 Scope: `SCOPE.md`. Tasks: `_docs/tasks.md`. Each task is a GitHub issue.
 
+## Documents
+
+- `_docs/process.md` - how work is organized
+
 ## Commands
 
 Backend (run in `backend/`):
