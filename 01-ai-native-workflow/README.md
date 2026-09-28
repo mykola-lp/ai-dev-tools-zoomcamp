@@ -17,12 +17,13 @@ Status: project skeleton. Features are tracked as GitHub issues.
 
 ## Run
 
-Backend (needs [uv](https://docs.astral.sh/uv/)):
+Backend needs Python 3.12 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 cd backend
 uv sync
-uv run uvicorn app.main:app --reload   # http://127.0.0.1:8000/docs
+uv run pytest                           # run the tests
+uv run uvicorn app.main:app --reload    # http://127.0.0.1:8000/docs
 ```
 
 Frontend (needs Node.js):
