@@ -8,6 +8,7 @@ dependencies = [
     "bcrypt>=5.0.0",
     "email-validator>=2.3.0",
     "fastapi>=0.115",
+    "pyjwt>=2.15.0",
     "sqlalchemy>=2.1.1",
     "uvicorn[standard]>=0.30",
 ]
