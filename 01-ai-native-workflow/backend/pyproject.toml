@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Household chores rotation app: backend"
 requires-python = ">=3.11"
 dependencies = [
+    "alembic>=1.20.0",
     "fastapi>=0.115",
+    "sqlalchemy>=2.1.1",
     "uvicorn[standard]>=0.30",
 ]
 
