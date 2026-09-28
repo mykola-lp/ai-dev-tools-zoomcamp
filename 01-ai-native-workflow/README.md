@@ -17,7 +17,7 @@ Status: project skeleton. Features are tracked as GitHub issues.
 
 ## Run
 
-Backend needs Python 3.12 and [uv](https://docs.astral.sh/uv/).
+**Backend** needs Python 3.12 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 cd backend
@@ -26,7 +26,12 @@ uv run pytest                           # run the tests
 uv run uvicorn app.main:app --reload    # http://127.0.0.1:8000/docs
 ```
 
-Frontend (needs Node.js):
+Environment variables (all optional in development):
+
+- `DATABASE_URL` - default `sqlite:///./app.db`
+- `SECRET_KEY` - key used to sign login tokens; the built-in default is for development only, set your own value elsewhere
+
+**Frontend** needs Node.js:
 
 ```bash
 cd frontend
