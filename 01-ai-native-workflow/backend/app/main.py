@@ -1,9 +1,10 @@
-from fastapi import FastAPI  # pyright: ignore[reportMissingImports]
+from fastapi import FastAPI
 
-from app.routers import auth
+from app.routers import auth, me
 
 app = FastAPI(title="Household Chores")
 app.include_router(auth.router)
+app.include_router(me.router)
 
 
 @app.get("/health")
