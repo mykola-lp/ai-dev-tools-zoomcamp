@@ -5,6 +5,8 @@ description = "Household chores rotation app: backend"
 requires-python = ">=3.11"
 dependencies = [
     "alembic>=1.20.0",
+    "bcrypt>=5.0.0",
+    "email-validator>=2.3.0",
     "fastapi>=0.115",
     "sqlalchemy>=2.1.1",
     "uvicorn[standard]>=0.30",
