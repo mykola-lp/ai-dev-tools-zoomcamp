@@ -5,8 +5,7 @@ from sqlalchemy import engine_from_config, pool  # type: ignore[reportMissingImp
 
 from app.db import DATABASE_URL, Base
 
-# When models appear, import them here (or in app/models/__init__.py)
-# so that they are registered on Base.metadata.
+from app import models  # noqa: F401  (registers tables on Base.metadata)
 
 config = context.config
 
