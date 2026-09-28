@@ -1,143 +1,101 @@
-# Backlog
+# Backlog (MVP)
 
-Project context: a web app for one household that automatically rotates recurring chores (daily, weekly, monthly) between members. Rotation is round-robin, weighted by chore difficulty, and overdue chores add their weight to the person's workload as debt. Members can post chores to an open board where anyone can take them, and the UI updates in real time over WebSocket. Stack: FastAPI, SQLAlchemy, SQLite, Alembic, React (Vite, TypeScript). Roles are `admin` and `member`, registration is open and the admin approves each new member. Layout: `backend/` and `frontend/` in one repository.
+Project context: a web app for one household that automatically rotates recurring chores (daily, weekly, monthly) between members. Rotation is round-robin, weighted by chore difficulty, and overdue chores add their weight to the person's workload as debt. Members can post assignments to an open board where anyone can take them, and the UI updates in real time over WebSocket. Stack: FastAPI, SQLAlchemy, SQLite, Alembic, React (Vite, TypeScript). Roles are `admin` and `member`, registration is open and the admin approves each new member. Layout: `backend/` and `frontend/` in one repository.
+
+MVP boundaries: no Docker, Postgres, deployment or CI yet; no editing or archiving of chores; no email or Telegram notifications; no availability, statistics or multiple households.
 
 ## 1. Set up an empty backend project with a passing test
 Goal: Have a `backend/` Python project where `pytest` runs and passes.
 Description: Create `backend/` with a virtual environment setup, a dependency file (FastAPI, pytest, httpx), an empty `app` package and a `tests/` folder. Add one trivial test (for example `assert True`) and document the command to run it in the README. No endpoints or business logic yet.
 
-## 2. Add a health endpoint
-Goal: Expose `GET /health` returning `{"status": "ok"}` from a FastAPI app.
-Description: In an existing FastAPI project, create the app instance and a health route. Add a test using FastAPI's test client that checks the status code and body. Confirm `/docs` shows the endpoint.
+## 2. Add the database layer and a health endpoint
+Goal: Connect the backend to SQLite and expose `GET /health`.
+Description: In an existing FastAPI project, add SQLAlchemy engine and session setup with the URL read from an environment variable (default `sqlite:///./app.db`), initialize Alembic, and provide a session dependency for routes. Add `GET /health` returning `{"status": "ok"}`. Test the endpoint with FastAPI's test client and add a test fixture that gives each test a temporary database.
 
-## 3. Configure the database layer
-Goal: Connect the backend to SQLite through SQLAlchemy with Alembic migrations ready.
-Description: Add SQLAlchemy engine and session setup with the database URL read from an environment variable (default `sqlite:///./app.db`). Initialize Alembic and provide a session dependency for FastAPI routes. Add a test that opens a session against a temporary test database.
-
-## 4. Create the User model and migration
-Goal: Store users with a role and an approval status.
-Description: Add a `users` table with id, email (unique), password hash, display name, role (`admin` or `member`), status (`pending`, `approved`, `rejected`) and created-at timestamp. Generate an Alembic migration for it. Add a test that inserts and reads back a user.
-
-## 5. Implement registration
+## 3. Implement the User model and registration
 Goal: Let a person register with `POST /auth/register`.
-Description: Accept email, password and display name, hash the password with a standard library such as `passlib` or `bcrypt`, and store the user with status `pending` and role `member`. The very first registered user becomes an approved admin. Reject duplicate emails with a clear error and cover both cases with tests.
+Description: Add a `users` table (id, unique email, password hash, display name, role `admin` or `member`, status `pending`, `approved` or `rejected`) with an Alembic migration. Registration hashes the password and stores the user as `pending` and `member`, except that the very first user becomes an approved admin. Reject duplicate emails and cover both cases with tests.
 
-## 6. Implement login and token issuing
-Goal: Let approved users log in with `POST /auth/login` and receive an access token.
-Description: Verify the password and return a signed JWT containing the user id and role. Refuse login for users whose status is not `approved`, with a distinct error for pending accounts. Add tests for success, wrong password and pending user.
+## 4. Implement login and authentication dependencies
+Goal: Let approved users log in and protect endpoints by token and role.
+Description: Add `POST /auth/login` that verifies the password and returns a signed JWT with the user id and role, refusing users who are not approved (with a distinct error for pending ones). Add reusable FastAPI dependencies for "current user" (401 on bad token) and "admin only" (403 for members), and a `GET /me` endpoint. Test success, wrong password, pending user and both roles.
 
-## 7. Add authentication and role dependencies
-Goal: Provide reusable FastAPI dependencies for "current user" and "admin only".
-Description: Parse the bearer token, load the user and return 401 for missing or invalid tokens. Add an admin-only dependency that returns 403 for members. Add `GET /me` as a sample protected endpoint and test it with a member and an admin.
-
-## 8. Build member approval endpoints
+## 5. Build member approval endpoints
 Goal: Let an admin review pending registrations.
-Description: Add admin-only endpoints to list pending users and to approve or reject one by id. Approved users can log in, rejected users cannot. Test that members cannot call these endpoints.
+Description: Add admin-only endpoints to list pending users and to approve or reject one by id, using the existing `users` table with a `status` field. Approved users can log in, rejected users cannot. Test that members get 403.
 
-## 9. Create the Chore model and proposal endpoint
-Goal: Let approved members propose a chore.
-Description: Add a `chores` table with title, optional description, period (`daily`, `weekly`, `monthly`), weight (integer 1-10), status (`proposed`, `active`, `archived`) and the proposer. Add `POST /chores` for approved users that creates a chore with status `proposed`. Add a migration and tests.
+## 6. Implement chores: propose, approve and list
+Goal: Let members propose chores and the admin approve them.
+Description: Add a `chores` table (title, optional description, period `daily`, `weekly` or `monthly`, integer weight 1-10, status `proposed` or `active`, proposer) with a migration. Add `POST /chores` for approved users (creates a `proposed` chore), an admin-only approve endpoint that can set weight and period, and `GET /chores` with a status filter. Test permissions and the status change.
 
-## 10. Add chore approval and management for admins
-Goal: Let an admin approve, edit and archive chores.
-Description: Add admin-only endpoints to approve a proposed chore (optionally setting its weight and period), edit a chore, and archive it. Add `GET /chores` returning chores filtered by status, visible to all approved members. Test permissions and status transitions.
+## 7. Add the Assignment model and listing endpoints
+Goal: Represent one occurrence of a chore assigned to one person and let members list them.
+Description: Add an `assignments` table (chore id, assignee id, due date, status `pending`, `done` or `overdue`, completed-at, on-board flag) with a migration. Add `GET /assignments` with optional assignee and status filters and `GET /assignments/mine`, each item including chore title, weight, due date and status. Test with assignments inserted directly into the database.
 
-## 11. Create the Assignment model
-Goal: Represent one occurrence of a chore assigned to one person with a due date.
-Description: Add an `assignments` table with chore id, assignee id, due date, status (`pending`, `done`, `overdue`), completed-at timestamp, and a flag showing whether it is on the board. Add a migration and a test that creates an assignment for an existing chore and user. No scheduling logic yet.
+## 8. Implement the workload calculation and rotation function
+Goal: Compute each member's workload and pick who gets the next chore.
+Description: Write a pure function that, given members with their open assignments, returns each member's workload as the sum of weights of open assignments plus overdue debt (the weight of overdue assignments). Write a second pure function that picks the member with the lowest workload for a chore, breaking ties round-robin after the previous assignee. Expose the numbers through `GET /workload` and unit test ties, a single member and a member with heavy debt.
 
-## 12. Implement the weighted rotation function
-Goal: Write a pure function that picks who gets the next occurrence of a chore.
-Description: Given a list of members with their current workload (sum of weights of open assignments plus overdue debt) and the id of who did this chore last, return the member with the lowest workload, breaking ties by round-robin order after the previous assignee. Keep it free of database access so it can be unit tested. Cover ties, a single member, and a heavy-debt member in tests.
-
-## 13. Generate assignments for due chores
+## 9. Generate assignments for due chores
 Goal: Create new assignments automatically when a chore is due.
-Description: Add a service function, plus an admin-only endpoint that triggers it, which finds active chores whose next occurrence has no assignment yet and creates one using the rotation function. Calculate the due date from the chore's period. Make it idempotent so running it twice does not create duplicates, and test that.
+Description: Add a service function that finds active chores whose next occurrence has no assignment yet, computes the due date from the chore's period, and creates an assignment for the member chosen by a given "pick next member" function (passed in as a parameter, so it can be stubbed in tests). Make it idempotent so a second run creates no duplicates. Add an admin-only endpoint that triggers it and test it.
 
-## 14. Add assignment listing endpoints
-Goal: Let members see what needs doing.
-Description: Add `GET /assignments` with optional filters for assignee and status, and `GET /assignments/mine` for the current user. Each item includes the chore title, weight, due date and status. Test that members only see approved-household data and that filters work.
+## 10. Detect overdue assignments and run the scheduler
+Goal: Mark missed assignments as overdue and run the generation job periodically.
+Description: Add a service function that sets `pending` assignments past their due date to `overdue`; they stay with the same person. Add a background task started with the app that calls this function and the assignment generation function once an hour, plus an admin-only endpoint to trigger both manually. Test the status change and that the manual endpoint works.
 
-## 15. Implement completing an assignment
+## 11. Implement completing an assignment
 Goal: Let the assignee mark an assignment as done.
-Description: Add `POST /assignments/{id}/complete`, allowed only for the current assignee, that sets status `done` and records the completion time. Reject completing an assignment that is already done or belongs to someone else. Add tests for each case.
+Description: Add `POST /assignments/{id}/complete`, allowed only for the current assignee, that sets status `done` and records the completion time. Reject completing an assignment that is already done or belongs to someone else. Completing an overdue assignment clears it from the person's debt because only open assignments count. Test each case.
 
-## 16. Detect overdue assignments and track debt
-Goal: Mark missed assignments as overdue and count their weight as debt.
-Description: Add a service function, plus an admin-only endpoint that triggers it, which marks pending assignments past their due date as `overdue`. Overdue assignments stay with the same person and their weight counts toward that person's workload as debt until completed. Test the status change and that completing an overdue assignment clears the debt.
+## 12. Build the exchange board
+Goal: Let members post assignments to an open board and take each other's.
+Description: Add `POST /assignments/{id}/post-to-board` (assignee only, not for done assignments), `GET /board` listing everything posted, and `POST /board/{assignment_id}/take`, which reassigns the assignment to the current user and clears the flag. Reject taking your own posting or something no longer on the board. Test permissions and edge cases.
 
-## 17. Add a workload summary endpoint
-Goal: Show how balanced the household is.
-Description: Add `GET /workload` returning, for each approved member, the sum of weights of open assignments, the debt from overdue assignments and the total. The rotation function should use the same calculation, so put it in one shared function. Test the numbers with a small fixture of members and assignments.
+## 13. Add a WebSocket endpoint with authentication
+Goal: Let logged-in clients receive real-time events.
+Description: Add `/ws` that accepts a token, rejects invalid ones, and keeps a connection manager of connected users with a `broadcast(event)` helper that sends JSON `{type, payload}`. Test connecting with a valid and an invalid token and receiving a broadcast message.
 
-## 18. Post an assignment to the board
-Goal: Let an assignee offer their assignment to the household.
-Description: Add `POST /assignments/{id}/post-to-board` (assignee only, status `pending` or `overdue`) that flags the assignment as on the board, and `DELETE` on the same path to withdraw it. Add `GET /board` listing everything currently on the board. Test permissions and that done assignments cannot be posted.
-
-## 19. Take an assignment from the board
-Goal: Let any approved member claim a posted assignment.
-Description: Add `POST /board/{assignment_id}/take` that reassigns the assignment to the current user and clears the board flag. Reject taking your own posting and taking something that is no longer on the board. Keep the assignment's due date and status, and test the edge cases.
-
-## 20. Add a WebSocket endpoint with authentication
-Goal: Let logged-in clients open a WebSocket connection to receive events.
-Description: Add `/ws` that accepts a token (query parameter or first message), rejects invalid tokens, and keeps a connection manager tracking connected users. Provide a `broadcast(event)` helper. Test connecting with a valid and an invalid token.
-
-## 21. Broadcast events on changes
+## 14. Broadcast events from existing endpoints
 Goal: Push real-time events when household data changes.
-Description: Emit JSON events such as `assignment.created`, `assignment.completed`, `board.posted`, `board.taken`, `chore.approved` and `member.approved` from the existing endpoints via the broadcast helper. Each event has a `type` and a small `payload` with ids. Test that a connected test client receives the event after the corresponding API call.
+Description: Using the existing `broadcast(event)` helper, emit `assignment.created`, `assignment.completed`, `board.posted`, `board.taken`, `chore.approved` and `member.approved` from the corresponding endpoints or services, each with a small payload of ids. Document the event names in the README. Test that a connected test client receives the event after an API call.
 
-## 22. Export and validate the OpenAPI contract
-Goal: Keep a committed `openapi.json` that matches the running API.
-Description: Add a script that writes the FastAPI OpenAPI schema to `backend/openapi.json` and a test that fails if the committed file is out of date. Add response models and tags where missing so the schema is readable. Document WebSocket event shapes in a short `docs/events.md` since OpenAPI does not cover them.
+## 15. Add a backend end-to-end happy-path test
+Goal: Verify the main flow through the API in one test.
+Description: Write a test that registers an admin and two members, approves the members, proposes and approves a chore, triggers assignment generation, completes one assignment, lets another go overdue, posts one to the board and takes it. Assert the workload numbers at the end. Use a fresh temporary database.
 
-## 23. Add backend integration tests for the main flow
-Goal: Verify the whole happy path through the API.
-Description: Write a test that registers an admin and two members, approves the members, proposes and approves a chore, generates assignments, completes one, lets one go overdue, posts one to the board and takes it. Use a fresh temporary database per test run. Assert the workload summary at the end.
-
-## 24. Set up an empty frontend project with a passing test
+## 16. Set up an empty frontend project with a passing test
 Goal: Have a `frontend/` React and TypeScript project where the test runner passes.
-Description: Create `frontend/` with Vite, React, TypeScript, Vitest and React Testing Library. Add one trivial test that renders the root component. Document install, dev and test commands in the README. No features yet.
+Description: Create `frontend/` with Vite, React, TypeScript, Vitest and React Testing Library. Add one trivial test that renders the root component and document the install, dev and test commands in the README. No features yet.
 
-## 25. Generate a typed API client from OpenAPI
+## 17. Export the OpenAPI schema and build a typed API client
 Goal: Give the frontend typed access to the backend.
-Description: Use `openapi-typescript` (or a similar tool) to generate types from `backend/openapi.json`, and write a small fetch wrapper that adds the bearer token and a configurable base URL. Add an npm script to regenerate types. Test the wrapper with a mocked `fetch`.
+Description: Add a backend script that writes the FastAPI OpenAPI schema to `backend/openapi.json`, then use `openapi-typescript` to generate types from it in the frontend and write a small fetch wrapper that adds the bearer token and reads the base URL from configuration. Add npm scripts to regenerate the types. Test the wrapper with a mocked `fetch`.
 
-## 26. Build registration and login pages
-Goal: Let a user register and log in from the UI.
-Description: Add two forms with validation and error display that call the register and login endpoints. Store the token in memory plus `localStorage` and provide an auth context with the current user. Show a clear "waiting for admin approval" message after registering or when a pending user logs in.
+## 18. Build registration, login and the protected app shell
+Goal: Let a user register and log in, and protect the rest of the UI.
+Description: Add registration and login forms with error display, an auth context that keeps the token and current user, and React Router with a layout containing navigation links (Assignments, Chores, Board, Admin). Redirect unauthenticated users to login, hide the Admin link from members, and show a "waiting for admin approval" message for pending users. Test the redirect and link visibility.
 
-## 27. Add routing and a protected layout
-Goal: Have an app shell with navigation and route protection.
-Description: Add React Router with a layout containing navigation links (Assignments, Chores, Board, Workload, Admin). Redirect unauthenticated users to login and hide the Admin link from members. Test the redirect and the link visibility.
+## 19. Build the admin page
+Goal: Let an admin approve members and chores from the UI.
+Description: Add an admin-only page with a list of pending members (Approve and Reject buttons) and a list of proposed chores where the admin can set weight and period and approve. Refresh the lists after each action and show empty states. Test both lists with mocked API responses.
 
-## 28. Build the admin members page
-Goal: Let an admin approve or reject pending registrations in the UI.
-Description: Add an admin-only page that lists pending users from the API with Approve and Reject buttons, and refreshes the list after each action. Show an empty state when nobody is waiting. Test it with mocked API responses.
+## 20. Build the chores page
+Goal: Let members see active chores and propose new ones.
+Description: Add a page listing active chores with title, period and weight, and a form to propose a chore with validation. Show the current user's own proposals with their status. Test the form and list with mocked data.
 
-## 29. Build the chores page and proposal form
-Goal: Let members see chores and propose new ones.
-Description: Add a page listing active chores with title, period and weight, and a form to propose a new chore. Show the member's own proposals with their status. Test form validation and the list rendering with mocked data.
+## 21. Build the assignments page with workload summary
+Goal: Let a member see and complete their assignments and see how balanced the household is.
+Description: Show the current user's pending and overdue assignments sorted by due date, with an overdue indicator, a "Done" button and a "Post to board" button. Add a compact workload table (open weight, debt and total per member) from the workload endpoint. Test completing an assignment and the button states with mocked data.
 
-## 30. Add admin chore approval to the UI
-Goal: Let an admin review proposed chores and manage active ones.
-Description: In the chores page, show admins a "Proposed" section where they can set the weight and period and approve, plus edit and archive actions for active chores. Members must not see these controls. Test both roles with mocked data.
+## 22. Build the board page
+Goal: Let members browse and take assignments others have posted.
+Description: List everything on the board with chore title, weight, due date and who posted it, plus a "Take" button that is hidden on the user's own postings and an empty state. Test the take action with a mocked API.
 
-## 31. Build the "my assignments" page
-Goal: Let a member see and complete their assignments.
-Description: Show the current user's pending and overdue assignments sorted by due date, with a clear overdue indicator and a "Done" button that calls the complete endpoint. Add a "Post to board" button on each item. Test completing an assignment and the button states.
-
-## 32. Build the board page
-Goal: Let members browse and take chores others have posted.
-Description: List everything on the board with its chore title, weight, due date and who posted it, plus a "Take" button that is hidden on the user's own postings. Add an empty state. Test the take action with a mocked API.
-
-## 33. Build the workload page
-Goal: Show how balanced the household is.
-Description: Fetch the workload summary and show each member's open weight, debt and total as a simple bar or table. Highlight the member with the highest total. Test rendering with mocked data.
-
-## 34. Add real-time updates on the frontend
+## 23. Add real-time updates on the frontend
 Goal: Update the UI live when WebSocket events arrive.
-Description: Add a WebSocket hook that connects with the auth token, reconnects on drop, and exposes incoming events. On each event type, invalidate the relevant cached data so assignments, board, chores and workload refresh automatically. Test the hook with a mocked WebSocket.
+Description: Add a hook that opens the WebSocket with the auth token, reconnects when it drops, and exposes incoming `{type, payload}` events. On each event type, refresh the relevant data (assignments, board, chores, workload, pending members) so pages update without reloading. Test the hook with a mocked WebSocket.
 
-## 35. Write project documentation
+## 24. Write project documentation
 Goal: Make the project runnable by someone new.
-Description: Write a root README covering what the app does, the tech stack, how to install and run the backend and frontend, how to run all tests, and how to regenerate the OpenAPI file and client types. Include a short section on the assignment generation and overdue endpoints and how to trigger them manually.
+Description: Write a root README covering what the app does, the stack, how to install and run backend and frontend, how to run all tests, how to regenerate the OpenAPI file and client types, and how to trigger the scheduler manually. Include the list of WebSocket events.
