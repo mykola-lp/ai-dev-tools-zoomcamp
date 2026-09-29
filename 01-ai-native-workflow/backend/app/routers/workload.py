@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -11,6 +13,13 @@ from app.schemas import WorkloadOut
 router = APIRouter(tags=["workload"])
 
 
+@dataclass
+class _WeightedAssignment:
+    assignee_id: int
+    weight: int
+    status: str
+
+
 @router.get("/workload", response_model=list[WorkloadOut])
 def get_workload(
     _: User = Depends(get_current_user),
@@ -20,8 +29,16 @@ def get_workload(
         db.scalars(select(User).where(User.status == UserStatus.approved))
     )
     assignments = list(db.scalars(select(Assignment)))
+    weighted = [
+        _WeightedAssignment(
+            assignee_id=a.assignee_id,
+            weight=a.chore.weight,
+            status=a.status.value,
+        )
+        for a in assignments
+    ]
 
-    workloads = compute_workloads([m.id for m in members], assignments)
+    workloads = compute_workloads([m.id for m in members], weighted)
     names = {m.id: m.display_name for m in members}
 
     result = [
