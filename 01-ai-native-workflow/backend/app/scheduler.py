@@ -1,12 +1,16 @@
+import logging
+
 from datetime import date, timedelta
 from typing import Callable
-
 from dateutil.relativedelta import relativedelta
-from sqlalchemy import select
+
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.models import Assignment, AssignmentStatus, Chore, ChorePeriod, ChoreStatus, User, UserStatus
 from app.rotation import compute_workloads, pick_next_member
+
+logger = logging.getLogger(__name__)
 
 PickNext = Callable[[list[int], int | None], int]
 
@@ -95,3 +99,20 @@ def generate_assignments(
         created += 1
 
     return created
+
+
+def mark_overdue(db: Session, today: date) -> int:
+    result = db.execute(
+        update(Assignment)
+        .where(Assignment.status == AssignmentStatus.pending)
+        .where(Assignment.due_date < today)
+        .values(status=AssignmentStatus.overdue)
+    )
+    db.commit()
+    return result.rowcount
+
+
+def run_scheduler_cycle(db: Session, today: date) -> dict[str, int]:
+    marked_overdue = mark_overdue(db, today)
+    created = generate_assignments(db, today)
+    return {"created": created, "marked_overdue": marked_overdue}
