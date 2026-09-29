@@ -2,6 +2,9 @@ import enum
 from datetime import datetime, timezone
 from importlib import import_module
 
+from sqlalchemy import DateTime, Enum, ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 _sqlalchemy = import_module("sqlalchemy")
 _sqlalchemy_orm = import_module("sqlalchemy.orm")
 
@@ -45,3 +48,35 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )
+
+
+class ChorePeriod(str, enum.Enum):
+    daily = "daily"
+    weekly = "weekly"
+    monthly = "monthly"
+
+
+class ChoreStatus(str, enum.Enum):
+    proposed = "proposed"
+    active = "active"
+
+
+class Chore(Base):
+    __tablename__ = "chores"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(String(1000), default=None)
+    period: Mapped[ChorePeriod] = mapped_column(
+        Enum(ChorePeriod, native_enum=False, length=20)
+    )
+    weight: Mapped[int] = mapped_column()
+    status: Mapped[ChoreStatus] = mapped_column(
+        Enum(ChoreStatus, native_enum=False, length=20), default=ChoreStatus.proposed
+    )
+    proposed_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    proposed_by: Mapped["User"] = relationship()
