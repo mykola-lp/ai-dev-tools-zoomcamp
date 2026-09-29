@@ -3,7 +3,7 @@ from datetime import date
 import pytest
 from sqlalchemy import select
 
-from app.models import Assignment, AssignmentStatus, Chore, ChorePeriod, ChoreStatus, User, UserStatus
+from app.models import Assignment, AssignmentStatus, Chore, ChorePeriod, ChoreStatus, Role, User, UserStatus
 from app.scheduler import generate_assignments
 
 PASSWORD = "password123"
@@ -87,7 +87,7 @@ def test_daily_due_date_calculation(client, db_session):
     )
     db_session.commit()
 
-    generate_assignments(db_session, date(2026, 1, 15), pick_next=round_robin_pick)
+    generate_assignments(db_session, date(2026, 1, 11), pick_next=round_robin_pick)
 
     latest = db_session.scalar(select(Assignment).order_by(Assignment.id.desc()))
     assert latest.due_date == date(2026, 1, 11)
@@ -106,7 +106,7 @@ def test_weekly_due_date_calculation(client, db_session):
     )
     db_session.commit()
 
-    generate_assignments(db_session, date(2026, 1, 20), pick_next=round_robin_pick)
+    generate_assignments(db_session, date(2026, 1, 17), pick_next=round_robin_pick)
 
     latest = db_session.scalar(select(Assignment).order_by(Assignment.id.desc()))
     assert latest.due_date == date(2026, 1, 17)
@@ -125,7 +125,7 @@ def test_monthly_due_date_calculation(client, db_session):
     )
     db_session.commit()
 
-    generate_assignments(db_session, date(2026, 3, 1), pick_next=round_robin_pick)
+    generate_assignments(db_session, date(2026, 2, 10), pick_next=round_robin_pick)
 
     latest = db_session.scalar(select(Assignment).order_by(Assignment.id.desc()))
     assert latest.due_date == date(2026, 2, 10)
@@ -144,16 +144,24 @@ def test_month_end_clamping(client, db_session):
     )
     db_session.commit()
 
-    generate_assignments(db_session, date(2026, 3, 1), pick_next=round_robin_pick)
+    generate_assignments(db_session, date(2026, 2, 28), pick_next=round_robin_pick)
 
     latest = db_session.scalar(select(Assignment).order_by(Assignment.id.desc()))
     assert latest.due_date == date(2026, 2, 28)
 
 
-def test_chore_with_no_approved_members_is_skipped(client, db_session):
-    register(client, "admin@example.com", "Admin")
-    admin_pending = db_session.scalar(select(User))
-    make_active_chore(db_session, admin_pending.id)
+def test_chore_with_no_approved_members_is_skipped(db_session):
+    proposer = User(
+        email="pending@example.com",
+        password_hash="irrelevant",
+        display_name="Pending",
+        role=Role.member,
+        status=UserStatus.pending,
+    )
+    db_session.add(proposer)
+    db_session.commit()
+    db_session.refresh(proposer)
+    make_active_chore(db_session, proposer.id)
 
     created = generate_assignments(db_session, date(2026, 1, 10), pick_next=round_robin_pick)
 
