@@ -82,3 +82,11 @@ class AssignmentOut(BaseModel):
     due_date: date_type
     status: AssignmentStatus
     on_board: bool
+
+
+class WorkloadOut(BaseModel):
+    member_id: int
+    display_name: str
+    open_weight: int
+    debt: int
+    total: int
