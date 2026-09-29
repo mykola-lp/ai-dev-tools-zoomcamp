@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from app.models import Role, UserStatus
+from app.models import Role, UserStatus, ChorePeriod, ChoreStatus
 
 
 class RegisterRequest(BaseModel):
@@ -45,3 +45,27 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class ChoreCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=1000)
+    period: ChorePeriod
+    weight: int = Field(ge=1, le=10)
+
+
+class ChoreApprove(BaseModel):
+    weight: int | None = Field(default=None, ge=1, le=10)
+    period: ChorePeriod | None = None
+
+
+class ChoreOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    description: str | None
+    period: ChorePeriod
+    weight: int
+    status: ChoreStatus
+    proposed_by_id: int
