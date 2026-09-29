@@ -1,12 +1,13 @@
 from fastapi import FastAPI
 
-from app.routers import admin_users, auth, chores, me
+from app.routers import admin_users, assignments, auth, chores, me
 
 app = FastAPI(title="Household Chores")
 app.include_router(auth.router)
 app.include_router(me.router)
 app.include_router(admin_users.router)
 app.include_router(chores.router)
+app.include_router(assignments.router)
 
 
 @app.get("/health")
