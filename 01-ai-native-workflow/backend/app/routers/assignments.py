@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Query
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -51,3 +53,25 @@ def list_my_assignments(
         .order_by(Assignment.due_date, Assignment.id)
     )
     return [_to_out(a) for a in db.scalars(query)]
+
+
+@router.post("/{assignment_id}/complete", response_model=AssignmentOut)
+def complete_assignment(
+    assignment_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AssignmentOut:
+    assignment = db.get(Assignment, assignment_id)
+    if assignment is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Assignment not found")
+    if assignment.assignee_id != user.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your assignment")
+    if assignment.status == AssignmentStatus.done:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Assignment is already done")
+
+    assignment.status = AssignmentStatus.done
+    assignment.completed_at = datetime.now(timezone.utc)
+    assignment.on_board = False
+    db.commit()
+    db.refresh(assignment)
+    return _to_out(assignment)
