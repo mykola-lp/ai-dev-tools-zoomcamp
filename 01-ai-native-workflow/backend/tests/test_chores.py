@@ -107,6 +107,7 @@ def test_approve_with_invalid_override_gives_422(client, admin, db_session):
 
 
 def test_member_cannot_approve(client, db_session):
+    register(client, "admin@example.com", "Admin")
     member_headers, _ = make_approved_member(client, db_session)
     chore_id = propose(client, member_headers).json()["id"]
 
@@ -153,6 +154,7 @@ def test_admin_sees_all_proposed_chores(client, admin, db_session):
 
 
 def test_member_does_not_see_others_proposed_chores(client, db_session):
+    register(client, "admin@example.com", "Admin")
     member_headers, _ = make_approved_member(client, db_session, "carl@example.com")
     other_headers, _ = make_approved_member(client, db_session, "dana@example.com")
     propose(client, member_headers, title="Carl's chore")
