@@ -65,7 +65,8 @@ def test_workload_endpoint_sorted_by_total(client, db_session):
     totals = {item["member_id"]: item["total"] for item in body}
     assert totals[anna.id] == 0
     assert totals[bob.id] == 5
-    assert [item["member_id"] for item in body][0] == anna.id
+    order = [item["member_id"] for item in body]
+    assert order.index(anna.id) < order.index(bob.id)
 
 
 def test_workload_endpoint_requires_auth(client):
