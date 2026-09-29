@@ -11,7 +11,7 @@ You groom a task before anyone implements it.
 
 Definition of done:
 
-- The issue has all four sections filled in
+- The issue has all five sections filled in
 - Every acceptance criterion can be checked by looking at the result
 - Everything moved out of scope links to a follow-up issue
 - An engineer who has never spoken to you could implement it from the
