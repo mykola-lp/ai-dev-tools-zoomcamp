@@ -14,3 +14,16 @@ A five-part series by Alexey Grigorev (course author) on [aishippingblog.com](ht
 Separately, the longer, more personal write-up behind Part 1's orchestrator section:
 
 - [I Built an AI Agent Team for Software Development](https://aishippingblog.com/p/i-built-an-ai-agent-team-for-software) — the full story of building a multi-agent PM/Engineer/QA/orchestrator setup for a real project, with more detail and results than the condensed version in Part 1.
+
+## Team roles: inspiration
+
+The PM / Engineer / QA split in this repo follows [Alexey Grigorev's aishippingblog series](#related-articles). A more advanced version of the same idea, with a fourth role, lives in the [AI Shipping Labs website repo](https://github.com/AI-Shipping-Labs/website/tree/main/.claude/agents):
+
+- [Product Manager](https://github.com/AI-Shipping-Labs/website/blob/main/.claude/agents/product-manager.md) — turns a raw task into a spec with user stories and acceptance criteria, then signs off on the finished result from the user's point of view.
+- [Software Engineer](https://github.com/AI-Shipping-Labs/website/blob/main/.claude/agents/software-engineer.md) — writes the code and its tests.
+- [Tester](https://github.com/AI-Shipping-Labs/website/blob/main/.claude/agents/tester.md) — runs the tests, checks every acceptance criterion, and reports pass or fail with evidence.
+- [On-Call Engineer](https://github.com/AI-Shipping-Labs/website/blob/main/.claude/agents/oncall-engineer.md) — watches CI/CD after a push and fixes pipeline failures.
+
+Splitting the work this way keeps each role narrow, makes it harder to skip a step, and — most importantly — keeps the agent that writes the code from being the same one that decides whether it's correct.
+
+We are not adopting the On-Call Engineer role yet: it assumes a CI/CD pipeline, which is module 3/4 territory. Once we containerize and add CI, it's worth revisiting.
