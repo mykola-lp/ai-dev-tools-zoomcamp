@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from app.models import Role, UserStatus, ChorePeriod, ChoreStatus
+from datetime import date as date_type
+from app.models import Role, UserStatus, ChorePeriod, ChoreStatus, AssignmentStatus
 
 
 class RegisterRequest(BaseModel):
@@ -69,3 +70,15 @@ class ChoreOut(BaseModel):
     weight: int
     status: ChoreStatus
     proposed_by_id: int
+
+
+class AssignmentOut(BaseModel):
+    id: int
+    chore_id: int
+    chore_title: str
+    chore_weight: int
+    assignee_id: int
+    assignee_display_name: str
+    due_date: date_type
+    status: AssignmentStatus
+    on_board: bool
