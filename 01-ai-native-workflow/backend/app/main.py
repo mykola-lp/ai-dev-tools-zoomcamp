@@ -10,6 +10,7 @@ from app.db import SessionLocal
 from app.routers import admin_assignments, admin_scheduler, admin_users, assignments, auth, chores, me, workload
 from app.scheduler import run_scheduler_cycle
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
