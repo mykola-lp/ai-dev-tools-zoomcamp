@@ -7,7 +7,7 @@ from datetime import date
 from fastapi import FastAPI
 
 from app.db import SessionLocal
-from app.routers import admin_assignments, admin_scheduler, admin_users, assignments, auth, board, chores, me, workload
+from app.routers import admin_assignments, admin_scheduler, admin_users, assignments, auth, board, chores, me, workload, ws
 from app.scheduler import run_scheduler_cycle
 
 logging.basicConfig(level=logging.INFO)
@@ -52,6 +52,7 @@ app.include_router(workload.router)
 app.include_router(admin_assignments.router)
 app.include_router(admin_scheduler.router)
 app.include_router(board.router)
+app.include_router(ws.router)
 
 
 @app.get("/health")
