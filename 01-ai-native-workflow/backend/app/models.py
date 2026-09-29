@@ -1,5 +1,5 @@
 import enum
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from importlib import import_module
 
 from sqlalchemy import DateTime, Enum, ForeignKey, String
@@ -80,3 +80,32 @@ class Chore(Base):
     )
 
     proposed_by: Mapped["User"] = relationship()
+
+
+class AssignmentStatus(str, enum.Enum):
+    pending = "pending"
+    done = "done"
+    overdue = "overdue"
+
+
+class Assignment(Base):
+    __tablename__ = "assignments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    chore_id: Mapped[int] = mapped_column(ForeignKey("chores.id"))
+    assignee_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    due_date: Mapped[date] = mapped_column()
+    status: Mapped[AssignmentStatus] = mapped_column(
+        Enum(AssignmentStatus, native_enum=False, length=20),
+        default=AssignmentStatus.pending,
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+    on_board: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    chore: Mapped["Chore"] = relationship()
+    assignee: Mapped["User"] = relationship()
