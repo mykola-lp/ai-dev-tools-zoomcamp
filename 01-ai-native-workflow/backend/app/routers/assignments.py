@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from app.ws import manager
+
+from fastapi import BackgroundTasks, APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -58,6 +60,7 @@ def list_my_assignments(
 @router.post("/{assignment_id}/complete", response_model=AssignmentOut)
 def complete_assignment(
     assignment_id: int,
+    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> AssignmentOut:
@@ -74,4 +77,8 @@ def complete_assignment(
     assignment.on_board = False
     db.commit()
     db.refresh(assignment)
+    background_tasks.add_task(
+        manager.broadcast,
+        {"type": "assignment.completed", "payload": {"assignment_id": assignment.id}},
+    )
     return _to_out(assignment)
