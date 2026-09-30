@@ -52,7 +52,7 @@ def _next_due_date(previous_due_date: date | None, today: date, period: ChorePer
 
 def generate_assignments(
     db: Session, today: date, pick_next: PickNext | None = None
-) -> int:
+) -> list[Assignment]:
     if pick_next is None:
         pick_next = _default_pick_next(db)
 
@@ -66,7 +66,8 @@ def generate_assignments(
         )
     )
 
-    created = 0
+    created: list[Assignment] = []
+
     for chore in active_chores:
         if not approved_member_ids:
             continue
@@ -87,16 +88,16 @@ def generate_assignments(
 
         assignee_id = pick_next(approved_member_ids, last_assignee_id)
 
-        db.add(
-            Assignment(
-                chore_id=chore.id,
-                assignee_id=assignee_id,
-                due_date=due_date,
-                status=AssignmentStatus.pending,
-            )
+        assignment = Assignment(
+            chore_id=chore.id,
+            assignee_id=assignee_id,
+            due_date=due_date,
+            status=AssignmentStatus.pending,
         )
+        db.add(assignment)
         db.commit()
-        created += 1
+        db.refresh(assignment)
+        created.append(assignment)
 
     return created
 
@@ -115,4 +116,4 @@ def mark_overdue(db: Session, today: date) -> int:
 def run_scheduler_cycle(db: Session, today: date) -> dict[str, int]:
     marked_overdue = mark_overdue(db, today)
     created = generate_assignments(db, today)
-    return {"created": created, "marked_overdue": marked_overdue}
+    return {"created": len(created), "marked_overdue": marked_overdue}
