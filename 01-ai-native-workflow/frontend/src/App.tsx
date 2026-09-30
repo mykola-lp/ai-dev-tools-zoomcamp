@@ -1,13 +1,16 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
-import { AuthProvider } from "./auth/AuthContext";
+import { AuthProvider } from "./auth/AuthProvider";
+
 import ProtectedLayout from "./layout/ProtectedLayout";
+
 import AdminPage from "./pages/AdminPage";
 import AssignmentsPage from "./pages/AssignmentsPage";
 import BoardPage from "./pages/BoardPage";
 import ChoresPage from "./pages/ChoresPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+
 import AdminRoute from "./routes/AdminRoute";
 
 export default function App() {

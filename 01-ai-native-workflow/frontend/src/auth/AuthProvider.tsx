@@ -1,23 +1,11 @@
-import {
-  createContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
-import { getMe, login as loginRequest, type UserOut } from "../api/auth";
+import { getMe, login as loginRequest } from "../api/auth";
 import { setToken } from "../api/client";
+import { AuthContext, type AuthContextValue } from "./AuthContext";
+import type { UserOut } from "../api/auth";
 
 const TOKEN_STORAGE_KEY = "household-chores-token";
-
-interface AuthContextValue {
-  user: UserOut | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-}
-
-export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserOut | null>(null);
@@ -59,9 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
-  return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value: AuthContextValue = { user, loading, login, logout };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
