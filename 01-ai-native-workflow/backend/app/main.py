@@ -8,7 +8,8 @@ from fastapi import FastAPI
 
 from app.db import SessionLocal
 from app.routers import admin_assignments, admin_scheduler, admin_users, assignments, auth, board, chores, me, workload, ws
-from app.scheduler import run_scheduler_cycle
+from app.scheduler import generate_assignments, mark_overdue
+from app.ws import manager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,11 +20,22 @@ async def _scheduler_loop(interval_seconds: int) -> None:
         await asyncio.sleep(interval_seconds)
         db = SessionLocal()
         try:
-            result = run_scheduler_cycle(db, today=date.today())
+            marked_overdue = mark_overdue(db, date.today())
+            created = generate_assignments(db, date.today())
+            for assignment in created:
+                await manager.broadcast(
+                    {
+                        "type": "assignment.created",
+                        "payload": {
+                            "assignment_id": assignment.id,
+                            "assignee_id": assignment.assignee_id,
+                        },
+                    }
+                )
             logger.info(
                 "scheduler cycle: created=%s marked_overdue=%s",
-                result["created"],
-                result["marked_overdue"],
+                len(created),
+                marked_overdue,
             )
         except Exception:
             logger.exception("scheduler cycle failed")
