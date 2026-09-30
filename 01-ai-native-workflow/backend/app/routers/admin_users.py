@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+
+from app.ws import manager
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -42,8 +45,15 @@ def _set_status(user_id: int, new_status: UserStatus, db: Session) -> User:
 
 
 @router.post("/{user_id}/approve", response_model=UserOut)
-def approve_user(user_id: int, db: Session = Depends(get_db)) -> User:
-    return _set_status(user_id, UserStatus.approved, db)
+def approve_user(
+    user_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db)
+) -> User:
+    user = _set_status(user_id, UserStatus.approved, db)
+    background_tasks.add_task(
+        manager.broadcast,
+        {"type": "member.approved", "payload": {"user_id": user.id}},
+    )
+    return user
 
 
 @router.post("/{user_id}/reject", response_model=UserOut)
