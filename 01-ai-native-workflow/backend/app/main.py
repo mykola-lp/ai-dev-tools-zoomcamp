@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from datetime import date
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import SessionLocal
 from app.routers import admin_assignments, admin_scheduler, admin_users, assignments, auth, board, chores, me, workload, ws
@@ -55,6 +56,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Household Chores", lifespan=lifespan)
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(auth.router)
 app.include_router(me.router)
 app.include_router(admin_users.router)
