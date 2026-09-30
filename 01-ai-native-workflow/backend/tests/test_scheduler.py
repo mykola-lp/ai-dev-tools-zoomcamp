@@ -55,7 +55,7 @@ def test_first_occurrence_created(client, db_session):
 
     created = generate_assignments(db_session, today, pick_next=round_robin_pick)
 
-    assert created == 1
+    assert len(created) == 1
     assignment = db_session.scalar(select(Assignment))
     assert assignment.due_date == today
     assert assignment.assignee_id == admin.id
@@ -69,7 +69,7 @@ def test_no_duplicate_on_second_run(client, db_session):
     generate_assignments(db_session, today, pick_next=round_robin_pick)
     created_again = generate_assignments(db_session, today, pick_next=round_robin_pick)
 
-    assert created_again == 0
+    assert len(created_again) == 0
     assert db_session.scalar(select(Assignment).order_by(Assignment.id.desc())) is not None
     assert len(list(db_session.scalars(select(Assignment)))) == 1
 
@@ -165,7 +165,7 @@ def test_chore_with_no_approved_members_is_skipped(db_session):
 
     created = generate_assignments(db_session, date(2026, 1, 10), pick_next=round_robin_pick)
 
-    assert created == 0
+    assert len(created) == 0
     assert list(db_session.scalars(select(Assignment))) == []
 
 
