@@ -45,3 +45,16 @@ npm run dev   # http://localhost:5173
 cd backend && uv run pytest
 cd frontend && npm test
 ```
+
+## WebSocket events
+
+Connect to `WS /ws?token=<jwt>`. Every event is JSON `{"type": str, "payload": dict}`.
+
+| Type | Payload |
+|---|---|
+| `member.approved` | `{"user_id": int}` |
+| `chore.approved` | `{"chore_id": int}` |
+| `assignment.created` | `{"assignment_id": int, "assignee_id": int}` |
+| `assignment.completed` | `{"assignment_id": int}` |
+| `board.posted` | `{"assignment_id": int}` |
+| `board.taken` | `{"assignment_id": int, "assignee_id": int}` |
