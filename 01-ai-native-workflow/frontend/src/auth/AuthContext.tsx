@@ -1,6 +1,5 @@
 import {
   createContext,
-  useContext,
   useEffect,
   useState,
   type ReactNode,
@@ -18,26 +17,32 @@ interface AuthContextValue {
   logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserOut | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
-    if (!storedToken) {
-      setLoading(false);
-      return;
-    }
-    setToken(storedToken);
-    getMe()
-      .then((me) => setUser(me))
-      .catch(() => {
+    async function loadCurrentUser() {
+      const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+      if (!storedToken) {
+        setLoading(false);
+        return;
+      }
+      setToken(storedToken);
+      try {
+        const me = await getMe();
+        setUser(me);
+      } catch {
         localStorage.removeItem(TOKEN_STORAGE_KEY);
         setToken(null);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadCurrentUser();
   }, []);
 
   async function login(email: string, password: string): Promise<void> {
@@ -59,12 +64,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
 }
