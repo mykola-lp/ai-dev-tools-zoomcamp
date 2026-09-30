@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.ws import manager
 from app.db import get_db
 from app.deps import get_current_user, require_admin
 from app.models import Chore, ChoreStatus, User
@@ -49,7 +51,10 @@ def list_chores(
     dependencies=[Depends(require_admin)],
 )
 def approve_chore(
-    chore_id: int, payload: ChoreApprove, db: Session = Depends(get_db)
+    chore_id: int,
+    payload: ChoreApprove,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
 ) -> Chore:
     chore = db.get(Chore, chore_id)
     if chore is None:
@@ -63,4 +68,8 @@ def approve_chore(
 
     db.commit()
     db.refresh(chore)
+    background_tasks.add_task(
+        manager.broadcast,
+        {"type": "chore.approved", "payload": {"chore_id": chore.id}},
+    )
     return chore

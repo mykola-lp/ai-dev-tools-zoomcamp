@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.ws import manager
 from app.db import get_db
 from app.deps import get_current_user
 from app.models import Assignment, AssignmentStatus, User
@@ -14,6 +15,7 @@ router = APIRouter(tags=["board"])
 @router.post("/assignments/{assignment_id}/post-to-board", response_model=AssignmentOut)
 def post_to_board(
     assignment_id: int,
+    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> AssignmentOut:
@@ -28,6 +30,10 @@ def post_to_board(
     assignment.on_board = True
     db.commit()
     db.refresh(assignment)
+    background_tasks.add_task(
+        manager.broadcast,
+        {"type": "board.posted", "payload": {"assignment_id": assignment.id}},
+    )
     return _to_out(assignment)
 
 
@@ -47,6 +53,7 @@ def list_board(
 @router.post("/board/{assignment_id}/take", response_model=AssignmentOut)
 def take_from_board(
     assignment_id: int,
+    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> AssignmentOut:
@@ -62,4 +69,11 @@ def take_from_board(
     assignment.on_board = False
     db.commit()
     db.refresh(assignment)
+    background_tasks.add_task(
+        manager.broadcast,
+        {
+            "type": "board.taken",
+            "payload": {"assignment_id": assignment.id, "assignee_id": user.id},
+        },
+    )
     return _to_out(assignment)
