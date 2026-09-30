@@ -113,8 +113,6 @@ export default function ChoresPage() {
             Weight
             <input
               type="number"
-              min={1}
-              max={10}
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
             />
