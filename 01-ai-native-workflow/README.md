@@ -36,7 +36,9 @@ Environment variables (all optional in development):
 ```bash
 cd frontend
 npm install
-npm run dev   # http://localhost:5173
+npm run dev     # http://localhost:5173
+npm run build   # production build
+npm run lint    # ESLint
 ```
 
 ## Test
