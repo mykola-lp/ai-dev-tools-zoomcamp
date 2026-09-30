@@ -60,3 +60,18 @@ Connect to `WS /ws?token=<jwt>`. Every event is JSON `{"type": str, "payload": d
 | `assignment.completed` | `{"assignment_id": int}` |
 | `board.posted` | `{"assignment_id": int}` |
 | `board.taken` | `{"assignment_id": int, "assignee_id": int}` |
+
+
+## Regenerating the API client
+
+When backend endpoints change, regenerate the frontend's typed schema:
+
+```bash
+cd backend && uv run python -m scripts.export_openapi
+cd ../frontend && npm run gen:api
+```
+
+Environment variables (frontend, optional):
+
+- `VITE_API_URL` - backend base URL, default `http://127.0.0.1:8000`
+- `CORS_ORIGINS` (backend) - comma-separated list of allowed origins, default `http://localhost:5173`
