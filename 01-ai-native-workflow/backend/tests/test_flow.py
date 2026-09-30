@@ -33,6 +33,7 @@ def test_happy_path(client, db_session):
     # 1. Register an admin and two members; admin approves both
     register(client, "admin@example.com", "Admin")
     admin_headers = auth_headers(client, "admin@example.com")
+    admin = db_session.scalar(select(User).where(User.email == "admin@example.com"))
 
     register(client, "anna@example.com", "Anna")
     register(client, "bob@example.com", "Bob")
@@ -40,6 +41,11 @@ def test_happy_path(client, db_session):
     bob = db_session.scalar(select(User).where(User.email == "bob@example.com"))
     client.post(f"/admin/users/{anna.id}/approve", headers=admin_headers)
     client.post(f"/admin/users/{bob.id}/approve", headers=admin_headers)
+
+    email_by_id = {admin.id: "admin@example.com", anna.id: "anna@example.com", bob.id: "bob@example.com"}
+
+    def headers_for(assignee_id: int):
+        return auth_headers(client, email_by_id[assignee_id])
 
     # 2. Anna proposes a chore; admin approves it with a weight
     anna_headers = auth_headers(client, "anna@example.com")
@@ -59,11 +65,9 @@ def test_happy_path(client, db_session):
     assert len(first_batch) == 1
     first_assignment = first_batch[0]
     first_assignee_id = first_assignment.assignee_id
-    assert first_assignee_id in {anna.id, bob.id}
+    assert first_assignee_id in email_by_id
 
-    first_assignee_headers = (
-        anna_headers if first_assignee_id == anna.id else auth_headers(client, "bob@example.com")
-    )
+    first_assignee_headers = headers_for(first_assignee_id)
 
     # 4. The first assignee completes it
     complete_response = client.post(
@@ -72,7 +76,7 @@ def test_happy_path(client, db_session):
     assert complete_response.status_code == 200
     assert complete_response.json()["status"] == "done"
 
-    # 5. Generate the second occurrence; rotation should pick the other member
+    # 5. Generate the second occurrence; rotation should pick someone else
     day2 = date(2026, 1, 2)
     second_batch = generate_assignments(db_session, today=day2)
     assert len(second_batch) == 1
@@ -80,8 +84,7 @@ def test_happy_path(client, db_session):
     second_assignee_id = second_assignment.assignee_id
     assert second_assignee_id != first_assignee_id
 
-    second_assignee_email = "anna@example.com" if second_assignee_id == anna.id else "bob@example.com"
-    second_assignee_headers = auth_headers(client, second_assignee_email)
+    second_assignee_headers = headers_for(second_assignee_id)
 
     # 6. Advance past the due date and mark it overdue
     day3 = date(2026, 1, 5)
