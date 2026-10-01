@@ -1,8 +1,9 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { listActiveChores, listProposedChores, proposeChore, type ChoreOut } from "../api/chores";
 import { getErrorMessage } from "../api/errors";
 import { useAuth } from "../auth/useAuth";
+import { useRealtime } from "../realtime/useRealtime";
 import type { components } from "../api/schema";
 
 type ChorePeriod = components["schemas"]["ChorePeriod"];
@@ -21,16 +22,26 @@ export default function ChoresPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  function refetch() {
+  const { subscribe } = useRealtime();
+
+  const refetch = useCallback(() => {
     listActiveChores()
       .then(setActiveChores)
       .catch((err) => setListError(getErrorMessage(err, "Failed to load active chores")));
     listProposedChores()
       .then((chores) => setMyProposals(chores.filter((c) => c.proposed_by_id === user?.id)))
       .catch((err) => setListError(getErrorMessage(err, "Failed to load your proposals")));
-  }
+  }, [user?.id]);
 
-  useEffect(refetch, [user?.id]);
+  useEffect(refetch, [refetch]);
+
+  useEffect(() => {
+    return subscribe((event) => {
+      if (event.type === "chore.approved") {
+        refetch();
+      }
+    });
+  }, [subscribe, refetch]);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
