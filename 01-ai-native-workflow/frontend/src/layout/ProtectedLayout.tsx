@@ -1,9 +1,11 @@
 import { Link, Navigate, Outlet } from "react-router-dom";
 
 import { useAuth } from "../auth/useAuth";
+import { useRealtime } from "../realtime/useRealtime";
 
 export default function ProtectedLayout() {
   const { user, loading, logout } = useAuth();
+  const { state } = useRealtime();
 
   if (loading) {
     return <p>Loading…</p>;
@@ -15,6 +17,7 @@ export default function ProtectedLayout() {
 
   return (
     <div>
+      {state !== "open" && <p role="status">Reconnecting…</p>}
       <nav>
         <Link to="/assignments">Assignments</Link>
         <Link to="/chores">Chores</Link>
