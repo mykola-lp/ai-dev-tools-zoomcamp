@@ -57,7 +57,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /log in/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Assignments")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Assignments" })).toBeInTheDocument();
     });
   });
 
@@ -138,7 +138,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /log in/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Assignments")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Assignments" })).toBeInTheDocument();
     });
     expect(screen.queryByText("Admin")).not.toBeInTheDocument();
   });
@@ -167,7 +167,7 @@ describe("App", () => {
     await user.type(screen.getByLabelText(/password/i), "password123");
     await user.click(screen.getByRole("button", { name: /log in/i }));
 
-    await waitFor(() => screen.getByText("Assignments"));
+    await waitFor(() => screen.getByRole("link", { name: "Assignments" }));
 
     // navigate to /admin is not directly testable via MemoryRouter link click here,
     // this test instead confirms the Admin link/route is absent for a member
