@@ -8,7 +8,7 @@ export default function ProtectedLayout() {
   const { state } = useRealtime();
 
   if (loading) {
-    return <p>Loading…</p>;
+    return <p className="empty-state">Loading…</p>;
   }
 
   if (!user) {
@@ -17,14 +17,26 @@ export default function ProtectedLayout() {
 
   return (
     <div>
-      {state !== "open" && <p role="status">Reconnecting…</p>}
-      <nav>
-        <Link to="/assignments">Assignments</Link>
-        <Link to="/chores">Chores</Link>
-        <Link to="/board">Board</Link>
-        {user.role === "admin" && <Link to="/admin">Admin</Link>}
-        <button onClick={logout}>Log out</button>
+      <nav className="nav">
+        <div className="nav-links">
+          <Link to="/assignments">Assignments</Link>
+          <Link to="/chores">Chores</Link>
+          <Link to="/board">Board</Link>
+
+          {user.role === "admin" && <Link to="/admin">Admin</Link>}
+        </div>
+
+        <button className="button button-quiet" onClick={logout}>
+          Log out
+        </button>
       </nav>
+
+      {state !== "open" && (
+        <p className="status-line" role="status">
+          Reconnecting…
+        </p>
+      )}
+
       <Outlet />
     </div>
   );
