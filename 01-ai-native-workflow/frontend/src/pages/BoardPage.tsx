@@ -1,22 +1,32 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { listBoard, takeFromBoard, type AssignmentOut } from "../api/board";
 import { getErrorMessage } from "../api/errors";
 import { useAuth } from "../auth/useAuth";
+import { useRealtime } from "../realtime/useRealtime";
 
 export default function BoardPage() {
   const { user } = useAuth();
+  const { subscribe } = useRealtime();
   const [items, setItems] = useState<AssignmentOut[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
 
-  function refetch() {
+  const refetch = useCallback(() => {
     listBoard()
       .then(setItems)
       .catch((err) => setError(getErrorMessage(err, "Failed to load the board")));
-  }
+  }, []);
 
-  useEffect(refetch, []);
+  useEffect(refetch, [refetch]);
+
+  useEffect(() => {
+    return subscribe((event) => {
+      if (event.type.startsWith("board.")) {
+        refetch();
+      }
+    });
+  }, [subscribe, refetch]);
 
   async function handleTake(id: number) {
     setBusyId(id);
