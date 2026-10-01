@@ -1,7 +1,10 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 
 import { register } from "../api/auth";
 import { getErrorMessage } from "../api/errors";
+
+import "./auth.css";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -21,6 +24,7 @@ export default function RegisterPage() {
     }
 
     setSubmitting(true);
+  
     try {
       await register({ email, password, display_name: displayName });
       setSubmitted(true);
@@ -33,43 +37,65 @@ export default function RegisterPage() {
 
   if (submitted) {
     return (
-      <p>Thanks for registering! Please wait for an admin to approve your account.</p>
+      <div className="auth-page">
+        <div className="auth-card">
+          <h1>Check back soon</h1>
+          <p>Thanks for registering! Please wait for an admin to approve your account.</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h1>Register</h1>
-      {error && <p role="alert">{error}</p>}
-      <label>
-        Display name
-        <input
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          required
-        />
-      </label>
-      <label>
-        Email
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-      </label>
-      <label>
-        Password
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-      </label>
-      <button type="submit" disabled={submitting}>
-        Register
-      </button>
-    </form>
+    <div className="auth-page">
+      <div className="auth-card">
+        <h1>Register</h1>
+
+        <form className="form" onSubmit={handleSubmit}>
+          {error && (
+            <p className="alert" role="alert">
+              {error}
+            </p>
+          )}
+
+          <label className="field">
+            Display name
+            <input
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              required
+            />
+          </label>
+
+          <label className="field">
+            Email
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </label>
+
+          <label className="field">
+            Password
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </label>
+
+          <button className="button" type="submit" disabled={submitting}>
+            Register
+          </button>
+        </form>
+
+        <p className="auth-switch">
+          Already approved? <Link to="/login">Log in</Link>
+        </p>
+      </div>
+    </div>
   );
 }
