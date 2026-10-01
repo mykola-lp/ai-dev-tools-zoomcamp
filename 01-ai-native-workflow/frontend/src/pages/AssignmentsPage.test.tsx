@@ -9,6 +9,7 @@ import {
   postToBoard,
 } from "../api/assignments";
 import { useAuth } from "../auth/useAuth";
+import { useRealtime } from "../realtime/useRealtime";
 import AssignmentsPage from "./AssignmentsPage";
 
 vi.mock("../api/assignments", () => ({
@@ -20,6 +21,10 @@ vi.mock("../api/assignments", () => ({
 
 vi.mock("../auth/useAuth", () => ({
   useAuth: vi.fn(),
+}));
+
+vi.mock("../realtime/useRealtime", () => ({
+  useRealtime: vi.fn(),
 }));
 
 const later = {
@@ -70,9 +75,14 @@ beforeEach(() => {
   vi.mocked(getWorkload).mockReset();
   vi.mocked(useAuth).mockReturnValue({
     user: { id: 1, email: "me@example.com", display_name: "Me", role: "member", status: "approved" },
+    token: "test-token",
     loading: false,
     login: vi.fn(),
     logout: vi.fn(),
+  });
+  vi.mocked(useRealtime).mockReturnValue({
+    state: "open",
+    subscribe: vi.fn(() => () => {}),
   });
 });
 
