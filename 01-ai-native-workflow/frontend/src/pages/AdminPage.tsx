@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { useRealtime } from "../realtime/useRealtime";
-
 import {
   approveChore,
   approveUser,
@@ -12,6 +10,7 @@ import {
   type UserOut,
 } from "../api/admin";
 import { getErrorMessage } from "../api/errors";
+import { useRealtime } from "../realtime/useRealtime";
 import type { components } from "../api/schema";
 
 type ChorePeriod = components["schemas"]["ChorePeriod"];
@@ -19,8 +18,9 @@ const PERIODS: ChorePeriod[] = ["daily", "weekly", "monthly"];
 
 export default function AdminPage() {
   return (
-    <div>
+    <div className="page">
       <h1>Admin</h1>
+
       <PendingMembersSection />
       <ProposedChoresSection />
     </div>
@@ -28,11 +28,11 @@ export default function AdminPage() {
 }
 
 function PendingMembersSection() {
+  const { subscribe } = useRealtime();
+
   const [users, setUsers] = useState<UserOut[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
-
-  const { subscribe } = useRealtime();
 
   const refetch = useCallback(() => {
     listPendingUsers()
@@ -53,6 +53,7 @@ function PendingMembersSection() {
   async function handleApprove(userId: number) {
     setBusyId(userId);
     setError(null);
+
     try {
       await approveUser(userId);
       refetch();
@@ -66,6 +67,7 @@ function PendingMembersSection() {
   async function handleReject(userId: number) {
     setBusyId(userId);
     setError(null);
+
     try {
       await rejectUser(userId);
       refetch();
@@ -77,23 +79,37 @@ function PendingMembersSection() {
   }
 
   return (
-    <section>
+    <section className="section">
       <h2>Pending members</h2>
-      {error && <p role="alert">{error}</p>}
-      {users === null && <p>Loading…</p>}
-      {users !== null && users.length === 0 && <p>No pending members</p>}
+
+      {error && (
+        <p className="alert" role="alert">
+          {error}
+        </p>
+      )}
+
+      {users === null && <p className="empty-state">Loading…</p>}
+
+      {users !== null && users.length === 0 && <p className="empty-state">No pending members</p>}
+
       {users !== null && users.length > 0 && (
-        <ul>
+        <ul className="list">
           {users.map((user) => (
-            <li key={user.id}>
-              {user.display_name} ({user.email}){" "}
-              <button
-                onClick={() => handleApprove(user.id)}
-                disabled={busyId === user.id}
-              >
+            <li className="list-item" key={user.id}>
+              <div className="list-item-main">
+                <div className="list-item-title">{user.display_name}</div>
+
+                <div className="list-item-meta">
+                  <span>{user.email}</span>
+                </div>
+              </div>
+
+              <button className="button" onClick={() => handleApprove(user.id)} disabled={busyId === user.id}>
                 Approve
-              </button>{" "}
+              </button>
+
               <button
+                className="button button-quiet"
                 onClick={() => handleReject(user.id)}
                 disabled={busyId === user.id}
               >
@@ -108,12 +124,12 @@ function PendingMembersSection() {
 }
 
 function ProposedChoresSection() {
+  const { subscribe } = useRealtime();
+
   const [chores, setChores] = useState<ChoreOut[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [drafts, setDrafts] = useState<Record<number, { weight: number; period: ChorePeriod }>>({});
-
-  const { subscribe } = useRealtime();
 
   const refetch = useCallback(() => {
     listProposedChores()
@@ -140,8 +156,10 @@ function ProposedChoresSection() {
 
   async function handleApprove(choreId: number) {
     const draft = drafts[choreId];
+
     setBusyId(choreId);
     setError(null);
+
     try {
       await approveChore(choreId, draft.weight, draft.period);
       refetch();
@@ -153,57 +171,72 @@ function ProposedChoresSection() {
   }
 
   return (
-    <section>
+    <section className="section">
       <h2>Proposed chores</h2>
-      {error && <p role="alert">{error}</p>}
-      {chores === null && <p>Loading…</p>}
-      {chores !== null && chores.length === 0 && <p>No proposed chores</p>}
+
+      {error && (
+        <p className="alert" role="alert">
+          {error}
+        </p>
+      )}
+
+      {chores === null && <p className="empty-state">Loading…</p>}
+
+      {chores !== null && chores.length === 0 && <p className="empty-state">No proposed chores</p>}
+
       {chores !== null && chores.length > 0 && (
-        <ul>
+        <ul className="list">
           {chores.map((chore) => {
             const draft = drafts[chore.id];
+
             return (
-              <li key={chore.id}>
-                <strong>{chore.title}</strong>
-                {chore.description && <p>{chore.description}</p>}
-                <p>Proposed by user #{chore.proposed_by_id}</p>
-                <label>
-                  Weight
-                  <input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={draft.weight}
-                    onChange={(e) =>
-                      setDrafts((prev) => ({
-                        ...prev,
-                        [chore.id]: { ...prev[chore.id], weight: Number(e.target.value) },
-                      }))
-                    }
-                  />
-                </label>
-                <label>
-                  Period
-                  <select
-                    value={draft.period}
-                    onChange={(e) =>
-                      setDrafts((prev) => ({
-                        ...prev,
-                        [chore.id]: {
-                          ...prev[chore.id],
-                          period: e.target.value as ChorePeriod,
-                        },
-                      }))
-                    }
-                  >
-                    {PERIODS.map((period) => (
-                      <option key={period} value={period}>
-                        {period}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button onClick={() => handleApprove(chore.id)} disabled={busyId === chore.id}>
+              <li className="list-item" key={chore.id}>
+                <div className="list-item-main">
+                  <div className="list-item-title">{chore.title}</div>
+
+                  {chore.description && <div className="list-item-meta"><span>{chore.description}</span></div>}
+
+                  <div className="list-item-meta">
+                    <span>Proposed by user #{chore.proposed_by_id}</span>
+                  </div>
+
+                  <div className="form form-compact">
+                    <label className="field">
+                      Weight
+                      <input
+                        type="number"
+                        value={draft.weight}
+                        onChange={(e) =>
+                          setDrafts((prev) => ({
+                            ...prev,
+                            [chore.id]: { ...prev[chore.id], weight: Number(e.target.value) },
+                          }))
+                        }
+                      />
+                    </label>
+
+                    <label className="field">
+                      Period
+                      <select
+                        value={draft.period}
+                        onChange={(e) =>
+                          setDrafts((prev) => ({
+                            ...prev,
+                            [chore.id]: { ...prev[chore.id], period: e.target.value as ChorePeriod },
+                          }))
+                        }
+                      >
+                        {PERIODS.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </div>
+
+                <button className="button" onClick={() => handleApprove(chore.id)} disabled={busyId === chore.id}>
                   Approve
                 </button>
               </li>
