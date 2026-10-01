@@ -11,6 +11,7 @@ const PERIODS: ChorePeriod[] = ["daily", "weekly", "monthly"];
 
 export default function ChoresPage() {
   const { user } = useAuth();
+  const { subscribe } = useRealtime();
   const [activeChores, setActiveChores] = useState<ChoreOut[] | null>(null);
   const [myProposals, setMyProposals] = useState<ChoreOut[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
@@ -21,8 +22,6 @@ export default function ChoresPage() {
   const [weight, setWeight] = useState("3");
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const { subscribe } = useRealtime();
 
   const refetch = useCallback(() => {
     listActiveChores()
@@ -51,13 +50,16 @@ export default function ChoresPage() {
       setFormError("Title is required");
       return;
     }
+
     const weightNumber = Number(weight);
+
     if (!Number.isInteger(weightNumber) || weightNumber < 1 || weightNumber > 10) {
       setFormError("Weight must be a whole number between 1 and 10");
       return;
     }
 
     setSubmitting(true);
+
     try {
       await proposeChore({
         title: title.trim(),
@@ -65,6 +67,7 @@ export default function ChoresPage() {
         period,
         weight: weightNumber,
       });
+
       setTitle("");
       setDescription("");
       setPeriod("daily");
@@ -78,39 +81,64 @@ export default function ChoresPage() {
   }
 
   return (
-    <div>
+    <div className="page">
       <h1>Chores</h1>
 
-      <section>
+      {listError && (
+        <p className="alert" role="alert">
+          {listError}
+        </p>
+      )}
+
+      <section className="section">
         <h2>Active chores</h2>
-        {listError && <p role="alert">{listError}</p>}
-        {activeChores === null && <p>Loading…</p>}
-        {activeChores !== null && activeChores.length === 0 && <p>No active chores</p>}
+
+        {activeChores === null && <p className="empty-state">Loading…</p>}
+
+        {activeChores !== null && activeChores.length === 0 && (
+          <p className="empty-state">No active chores</p>
+        )}
+
         {activeChores !== null && activeChores.length > 0 && (
-          <ul>
+          <ul className="list">
             {activeChores.map((chore) => (
-              <li key={chore.id}>
-                <strong>{chore.title}</strong> — {chore.period}, weight {chore.weight}
-                {chore.description && <p>{chore.description}</p>}
+              <li className="list-item" key={chore.id}>
+                <div className="list-item-main">
+                  <div className="list-item-title">{chore.title}</div>
+
+                  <div className="list-item-meta">
+                    <span>{chore.period}</span>
+                    <span>weight {chore.weight}</span>
+                    {chore.description && <span>{chore.description}</span>}
+                  </div>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </section>
 
-      <section>
+      <section className="section">
         <h2>Propose a chore</h2>
-        <form onSubmit={handleSubmit}>
-          {formError && <p role="alert">{formError}</p>}
-          <label>
+
+        <form className="form" onSubmit={handleSubmit}>
+          {formError && (
+            <p className="alert" role="alert">
+              {formError}
+            </p>
+          )}
+
+          <label className="field">
             Title
             <input value={title} onChange={(e) => setTitle(e.target.value)} />
           </label>
-          <label>
+
+          <label className="field">
             Description
             <input value={description} onChange={(e) => setDescription(e.target.value)} />
           </label>
-          <label>
+
+          <label className="field">
             Period
             <select value={period} onChange={(e) => setPeriod(e.target.value as ChorePeriod)}>
               {PERIODS.map((p) => (
@@ -120,29 +148,36 @@ export default function ChoresPage() {
               ))}
             </select>
           </label>
-          <label>
+
+          <label className="field">
             Weight
-            <input
-              type="number"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-            />
+            <input type="number" value={weight} onChange={(e) => setWeight(e.target.value)} />
           </label>
-          <button type="submit" disabled={submitting}>
+
+          <button className="button" type="submit" disabled={submitting}>
             Propose
           </button>
         </form>
       </section>
 
-      <section>
+      <section className="section">
         <h2>My proposals</h2>
-        {myProposals === null && <p>Loading…</p>}
-        {myProposals !== null && myProposals.length === 0 && <p>No proposals yet</p>}
+
+        {myProposals === null && <p className="empty-state">Loading…</p>}
+
+        {myProposals !== null && myProposals.length === 0 && (
+          <p className="empty-state">No proposals yet</p>
+        )}
+
         {myProposals !== null && myProposals.length > 0 && (
-          <ul>
+          <ul className="list">
             {myProposals.map((chore) => (
-              <li key={chore.id}>
-                {chore.title} — {chore.status}
+              <li className="list-item" key={chore.id}>
+                <div className="list-item-main">
+                  <div className="list-item-title">{chore.title}</div>
+                </div>
+
+                <span className="badge">{chore.status}</span>
               </li>
             ))}
           </ul>
