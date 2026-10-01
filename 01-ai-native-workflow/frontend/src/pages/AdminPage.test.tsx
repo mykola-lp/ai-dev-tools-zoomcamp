@@ -9,6 +9,7 @@ import {
   listProposedChores,
   rejectUser,
 } from "../api/admin";
+import { useRealtime } from "../realtime/useRealtime";
 import AdminPage from "./AdminPage";
 
 vi.mock("../api/admin", () => ({
@@ -17,6 +18,10 @@ vi.mock("../api/admin", () => ({
   rejectUser: vi.fn(),
   listProposedChores: vi.fn(),
   approveChore: vi.fn(),
+}));
+
+vi.mock("../realtime/useRealtime", () => ({
+  useRealtime: vi.fn(),
 }));
 
 const anna = {
@@ -43,6 +48,10 @@ beforeEach(() => {
   vi.mocked(rejectUser).mockReset();
   vi.mocked(listProposedChores).mockReset();
   vi.mocked(approveChore).mockReset();
+  vi.mocked(useRealtime).mockReturnValue({
+    state: "open",
+    subscribe: vi.fn(() => () => {}),
+  });
 });
 
 describe("AdminPage", () => {

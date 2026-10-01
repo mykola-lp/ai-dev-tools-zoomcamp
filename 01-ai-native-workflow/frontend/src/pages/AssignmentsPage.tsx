@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   completeAssignment,
@@ -10,15 +10,17 @@ import {
 } from "../api/assignments";
 import { getErrorMessage } from "../api/errors";
 import { useAuth } from "../auth/useAuth";
+import { useRealtime } from "../realtime/useRealtime";
 
 export default function AssignmentsPage() {
   const { user } = useAuth();
+  const { subscribe } = useRealtime();
   const [assignments, setAssignments] = useState<AssignmentOut[] | null>(null);
   const [workload, setWorkload] = useState<WorkloadOut[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
 
-  function refetchAssignments() {
+  const refetchAssignments = useCallback(() => {
     listMyAssignments()
       .then((list) => {
         const open = list.filter((a) => a.status === "pending" || a.status === "overdue");
@@ -26,18 +28,27 @@ export default function AssignmentsPage() {
         setAssignments(open);
       })
       .catch((err) => setError(getErrorMessage(err, "Failed to load assignments")));
-  }
+  }, []);
 
-  function refetchWorkload() {
+  const refetchWorkload = useCallback(() => {
     getWorkload()
       .then(setWorkload)
       .catch((err) => setError(getErrorMessage(err, "Failed to load workload")));
-  }
+  }, []);
 
   useEffect(() => {
     refetchAssignments();
     refetchWorkload();
-  }, []);
+  }, [refetchAssignments, refetchWorkload]);
+
+  useEffect(() => {
+    return subscribe((event) => {
+      if (event.type.startsWith("assignment.") || event.type.startsWith("board.")) {
+        refetchAssignments();
+        refetchWorkload();
+      }
+    });
+  }, [subscribe, refetchAssignments, refetchWorkload]);
 
   async function handleDone(id: number) {
     setBusyId(id);

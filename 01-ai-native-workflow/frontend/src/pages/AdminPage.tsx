@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+import { useRealtime } from "../realtime/useRealtime";
 
 import {
   approveChore,
@@ -30,13 +32,23 @@ function PendingMembersSection() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
 
-  function refetch() {
+  const { subscribe } = useRealtime();
+
+  const refetch = useCallback(() => {
     listPendingUsers()
       .then(setUsers)
       .catch((err) => setError(getErrorMessage(err, "Failed to load pending members")));
-  }
+  }, []);
 
-  useEffect(refetch, []);
+  useEffect(refetch, [refetch]);
+
+  useEffect(() => {
+    return subscribe((event) => {
+      if (event.type === "member.approved") {
+        refetch();
+      }
+    });
+  }, [subscribe, refetch]);
 
   async function handleApprove(userId: number) {
     setBusyId(userId);
@@ -101,7 +113,9 @@ function ProposedChoresSection() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [drafts, setDrafts] = useState<Record<number, { weight: number; period: ChorePeriod }>>({});
 
-  function refetch() {
+  const { subscribe } = useRealtime();
+
+  const refetch = useCallback(() => {
     listProposedChores()
       .then((list) => {
         setChores(list);
@@ -112,9 +126,17 @@ function ProposedChoresSection() {
         );
       })
       .catch((err) => setError(getErrorMessage(err, "Failed to load proposed chores")));
-  }
+  }, []);
 
-  useEffect(refetch, []);
+  useEffect(refetch, [refetch]);
+
+  useEffect(() => {
+    return subscribe((event) => {
+      if (event.type === "chore.approved") {
+        refetch();
+      }
+    });
+  }, [subscribe, refetch]);
 
   async function handleApprove(choreId: number) {
     const draft = drafts[choreId];

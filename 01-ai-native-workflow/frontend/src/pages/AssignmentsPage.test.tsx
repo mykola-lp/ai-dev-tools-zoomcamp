@@ -9,6 +9,7 @@ import {
   postToBoard,
 } from "../api/assignments";
 import { useAuth } from "../auth/useAuth";
+import { useRealtime } from "../realtime/useRealtime";
 import AssignmentsPage from "./AssignmentsPage";
 
 vi.mock("../api/assignments", () => ({
@@ -20,6 +21,10 @@ vi.mock("../api/assignments", () => ({
 
 vi.mock("../auth/useAuth", () => ({
   useAuth: vi.fn(),
+}));
+
+vi.mock("../realtime/useRealtime", () => ({
+  useRealtime: vi.fn(),
 }));
 
 const later = {
@@ -70,9 +75,14 @@ beforeEach(() => {
   vi.mocked(getWorkload).mockReset();
   vi.mocked(useAuth).mockReturnValue({
     user: { id: 1, email: "me@example.com", display_name: "Me", role: "member", status: "approved" },
+    token: "test-token",
     loading: false,
     login: vi.fn(),
     logout: vi.fn(),
+  });
+  vi.mocked(useRealtime).mockReturnValue({
+    state: "open",
+    subscribe: vi.fn(() => () => {}),
   });
 });
 
@@ -153,6 +163,31 @@ describe("AssignmentsPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("You have no open assignments")).toBeInTheDocument();
+    });
+  });
+
+  it("refetches assignments and workload when a matching event arrives", async () => {
+    let capturedHandler: ((event: { type: string; payload: unknown }) => void) | null = null;
+    vi.mocked(useRealtime).mockReturnValue({
+      state: "open",
+      subscribe: (handler) => {
+        capturedHandler = handler;
+        return () => {};
+      },
+    });
+    vi.mocked(listMyAssignments)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([later]);
+    vi.mocked(getWorkload).mockResolvedValue([]);
+
+    render(<AssignmentsPage />);
+    await waitFor(() => screen.getByText("You have no open assignments"));
+
+    expect(capturedHandler).not.toBeNull();
+    capturedHandler!({ type: "assignment.created", payload: { assignment_id: 1 } });
+
+    await waitFor(() => {
+      expect(listMyAssignments).toHaveBeenCalledTimes(2);
     });
   });
 });

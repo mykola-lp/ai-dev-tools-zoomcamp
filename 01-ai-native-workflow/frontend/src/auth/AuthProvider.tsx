@@ -9,6 +9,7 @@ const TOKEN_STORAGE_KEY = "household-chores-token";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserOut | null>(null);
+  const [token, setTokenState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,12 +20,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       setToken(storedToken);
+      setTokenState(storedToken);
       try {
         const me = await getMe();
         setUser(me);
       } catch {
         localStorage.removeItem(TOKEN_STORAGE_KEY);
         setToken(null);
+        setTokenState(null);
       } finally {
         setLoading(false);
       }
@@ -37,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { access_token } = await loginRequest({ email, password });
     localStorage.setItem(TOKEN_STORAGE_KEY, access_token);
     setToken(access_token);
+    setTokenState(access_token);
     const me = await getMe();
     setUser(me);
   }
@@ -44,10 +48,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function logout(): void {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     setToken(null);
+    setTokenState(null);
     setUser(null);
   }
 
-  const value: AuthContextValue = { user, loading, login, logout };
+  const value: AuthContextValue = { user, token, loading, login, logout };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
