@@ -31,6 +31,7 @@ export default function BoardPage() {
   async function handleTake(id: number) {
     setBusyId(id);
     setError(null);
+
     try {
       await takeFromBoard(id);
       refetch();
@@ -43,20 +44,35 @@ export default function BoardPage() {
   }
 
   return (
-    <div>
+    <div className="page">
       <h1>Board</h1>
-      {error && <p role="alert">{error}</p>}
-      {items === null && <p>Loading…</p>}
-      {items !== null && items.length === 0 && <p>Nothing on the board</p>}
+
+      {error && (
+        <p className="alert" role="alert">
+          {error}
+        </p>
+      )}
+
+      {items === null && <p className="empty-state">Loading…</p>}
+
+      {items !== null && items.length === 0 && <p className="empty-state">Nothing on the board</p>}
+
       {items !== null && items.length > 0 && (
-        <ul>
+        <ul className="list">
           {items.map((item) => (
-            <li key={item.id}>
-              <strong>{item.chore_title}</strong> — weight {item.chore_weight}, due{" "}
-              {item.due_date}, posted by {item.assignee_display_name}
-              {" "}
+            <li className="list-item" key={item.id}>
+              <div className="list-item-main">
+                <div className="list-item-title">{item.chore_title}</div>
+
+                <div className="list-item-meta">
+                  <span>Weight {item.chore_weight}</span>
+                  <span>Due {item.due_date}</span>
+                  <span>posted by {item.assignee_display_name}</span>
+                </div>
+              </div>
+
               {item.assignee_id !== user?.id && (
-                <button onClick={() => handleTake(item.id)} disabled={busyId === item.id}>
+                <button className="button" onClick={() => handleTake(item.id)} disabled={busyId === item.id}>
                   Take
                 </button>
               )}
