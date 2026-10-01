@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AuthProvider } from "./auth/AuthProvider";
+import { RealtimeProvider } from "./realtime/RealtimeProvider";
 
 import ProtectedLayout from "./layout/ProtectedLayout";
 
@@ -16,24 +17,26 @@ import AdminRoute from "./routes/AdminRoute";
 export default function App() {
   return (
     <AuthProvider>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route element={<ProtectedLayout />}>
-          <Route path="/" element={<Navigate to="/assignments" replace />} />
-          <Route path="/assignments" element={<AssignmentsPage />} />
-          <Route path="/chores" element={<ChoresPage />} />
-          <Route path="/board" element={<BoardPage />} />
-          <Route
-            path="/admin"
-            element={
-              <AdminRoute>
-                <AdminPage />
-              </AdminRoute>
-            }
-          />
-        </Route>
-      </Routes>
+      <RealtimeProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route element={<ProtectedLayout />}>
+            <Route path="/" element={<Navigate to="/assignments" replace />} />
+            <Route path="/assignments" element={<AssignmentsPage />} />
+            <Route path="/chores" element={<ChoresPage />} />
+            <Route path="/board" element={<BoardPage />} />
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminPage />
+                </AdminRoute>
+              }
+            />
+          </Route>
+        </Routes>
+      </RealtimeProvider>
     </AuthProvider>
   );
 }
