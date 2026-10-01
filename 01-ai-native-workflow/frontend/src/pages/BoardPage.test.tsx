@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { listBoard, takeFromBoard } from "../api/board";
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/useAuth";
+import { useRealtime } from "../realtime/useRealtime";
 import BoardPage from "./BoardPage";
 
 vi.mock("../api/board", () => ({
@@ -14,6 +15,10 @@ vi.mock("../api/board", () => ({
 
 vi.mock("../auth/useAuth", () => ({
   useAuth: vi.fn(),
+}));
+
+vi.mock("../realtime/useRealtime", () => ({
+  useRealtime: vi.fn(),
 }));
 
 const ownPosting = {
@@ -45,9 +50,14 @@ beforeEach(() => {
   vi.mocked(takeFromBoard).mockReset();
   vi.mocked(useAuth).mockReturnValue({
     user: { id: 1, email: "me@example.com", display_name: "Me", role: "member", status: "approved" },
+    token: "test-token",
     loading: false,
     login: vi.fn(),
     logout: vi.fn(),
+  });
+  vi.mocked(useRealtime).mockReturnValue({
+    state: "open",
+    subscribe: vi.fn(() => () => {}),
   });
 });
 
