@@ -1,0 +1,870 @@
+openapi: 3.0.3
+info:
+  title: Weather Analytics Dashboard API
+  version: 1.0.0
+  description: |
+    Application API expected by the frontend (`frontend/src/services/types.ts`, `WeatherApi`).
+    Open-Meteo is an internal backend concern and is NOT exposed through this contract.
+
+    **Access model**
+    - Anonymous users may explore: cities, weather, freshness/refresh, analytics, and public views.
+    - Persistent data (saved cities, saved views, personal dashboard, analysis history) requires authentication.
+    - Authentication is a cookie session set by `register` / `login` and cleared by `logout`.
+
+    **Errors** use a single shape (`ApiError`) whose `code` matches the frontend `ApiError` class.
+servers:
+  - url: /api
+    description: Same-origin backend
+
+tags:
+  - name: Auth
+  - name: Cities
+  - name: Weather
+  - name: Analytics
+  - name: Saved cities
+  - name: Views
+  - name: History
+
+security: []
+
+paths:
+  /auth/session:
+    get:
+      tags: [Auth]
+      operationId: getSession
+      summary: Current session
+      description: Returns the signed-in user, or `null` when anonymous. Never returns 401.
+      responses:
+        '200':
+          description: Current user or null
+          content:
+            application/json:
+              schema:
+                nullable: true
+                allOf:
+                  - $ref: '#/components/schemas/User'
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      operationId: register
+      summary: Register and sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '201':
+          description: Account created, session started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/Validation'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '200':
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Sign out
+      responses:
+        '204':
+          description: Session ended
+
+  /cities:
+    get:
+      tags: [Cities]
+      operationId: searchCities
+      summary: Search cities by name or country
+      description: Returns at most 8 matches. Empty or blank `q` returns an empty list.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Matching cities
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 8
+                items: { $ref: '#/components/schemas/City' }
+
+  /cities/map:
+    get:
+      tags: [Cities]
+      operationId: listMapCities
+      summary: Cities selectable on the map
+      responses:
+        '200':
+          description: Map cities
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/City' }
+
+  /cities/lookup:
+    get:
+      tags: [Cities]
+      operationId: getCities
+      summary: Get several cities by id (order preserved)
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          style: form
+          explode: false
+          schema:
+            type: array
+            items: { type: string }
+          example: lisbon,london
+      responses:
+        '200':
+          description: Cities in the requested order
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/City' }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /weather/current:
+    get:
+      tags: [Weather]
+      operationId: getCurrentWeather
+      summary: Current weather for cities
+      parameters:
+        - $ref: '#/components/parameters/CityIds'
+      responses:
+        '200':
+          description: One entry per requested city
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CurrentWeather' }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /weather/series:
+    get:
+      tags: [Weather]
+      operationId: getWeatherSeries
+      summary: Daily series (historical or forecast) for cities
+      description: |
+        Historical periods (`last*`) return days ending yesterday/today; forecast periods (`next*`)
+        return days starting tomorrow. Response contains one series per requested city, each with
+        the same number of points as the period's `days`.
+      parameters:
+        - $ref: '#/components/parameters/CityIds'
+        - name: period
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/PeriodRange' }
+      responses:
+        '200':
+          description: Series per city
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CitySeries' }
+        '400':
+          $ref: '#/components/responses/Validation'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /weather/freshness:
+    get:
+      tags: [Weather]
+      operationId: getFreshness
+      summary: Last-updated time per data category
+      description: Always returns three entries (current, forecast, historical).
+      responses:
+        '200':
+          description: Freshness per category
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Freshness' }
+
+  /weather/refresh/{category}:
+    post:
+      tags: [Weather]
+      operationId: refreshWeather
+      summary: Manually request a refresh of a data category
+      description: |
+        The backend decides whether a new upstream request is needed or cached data is fresh enough
+        (`fetchedFromSource` tells which). Upstream failure returns 502 (`UPSTREAM`).
+      parameters:
+        - name: category
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/DataCategory' }
+      responses:
+        '200':
+          description: Refresh outcome
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResult'
+        '502':
+          $ref: '#/components/responses/Upstream'
+
+  /analytics/analyze:
+    post:
+      tags: [Analytics]
+      operationId: analyze
+      summary: Compute analytics for a view configuration (not persisted)
+      description: Aggregates, anomalies, trends and textual insights. Available to anonymous users.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ViewConfig'
+      responses:
+        '200':
+          description: Analysis result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisResult'
+        '400':
+          $ref: '#/components/responses/Validation'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /saved-cities:
+    get:
+      tags: [Saved cities]
+      operationId: listSavedCities
+      summary: List the user's saved cities
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200':
+          description: Saved cities
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/City' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /saved-cities/{cityId}:
+    parameters:
+      - name: cityId
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      tags: [Saved cities]
+      operationId: addSavedCity
+      summary: Save a city (idempotent)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200':
+          description: Updated list of saved cities
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/City' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Saved cities]
+      operationId: removeSavedCity
+      summary: Remove a saved city (idempotent)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200':
+          description: Updated list of saved cities
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/City' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /views:
+    get:
+      tags: [Views]
+      operationId: listViews
+      summary: List the user's saved views
+      description: Sorted by `updatedAt` descending.
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200':
+          description: Own views
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SavedView' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Views]
+      operationId: createView
+      summary: Create a saved view
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ViewCreate'
+      responses:
+        '201':
+          description: Created view
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedView'
+        '400':
+          $ref: '#/components/responses/Validation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /personal-dashboard:
+    get:
+      tags: [Views]
+      operationId: getPersonalDashboard
+      summary: What the personal dashboard should open
+      description: |
+        Returns the user's last saved view (most recently updated) as `source: saved`.
+        If the user has no saved view, returns `source: default` with a default configuration
+        (built from saved cities when available). The default view is not persisted until the user saves it.
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200':
+          description: Personal dashboard source
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonalDashboard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /views/{viewId}:
+    parameters:
+      - name: viewId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Views]
+      operationId: getView
+      summary: Get a view
+      description: |
+        Public views are readable by anyone (shareable URL). Private views are readable only by the owner;
+        for everyone else the backend responds 404 (does not reveal existence).
+        Authentication is optional.
+      security:
+        - {}
+        - cookieAuth: []
+      responses:
+        '200':
+          description: The view
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedView'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Views]
+      operationId: updateView
+      summary: Partially update a view (owner only)
+      description: |
+        Any subset of fields may be sent. Resulting configuration must still be valid.
+        Updates never modify existing analysis runs.
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ViewPatch'
+      responses:
+        '200':
+          description: Updated view
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedView'
+        '400':
+          $ref: '#/components/responses/Validation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Views]
+      operationId: deleteView
+      summary: Delete a view (owner only)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /history/runs:
+    get:
+      tags: [History]
+      operationId: listAnalysisRuns
+      summary: List the user's analysis runs
+      description: Sorted by `createdAt` descending.
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200':
+          description: Own runs
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AnalysisRun' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [History]
+      operationId: createAnalysisRun
+      summary: Run an analysis and store an immutable snapshot
+      description: |
+        Always creates a NEW run. Stored runs are never recalculated or modified, even if the source view
+        is edited or weather data is refreshed.
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ViewConfig'
+      responses:
+        '201':
+          description: The stored run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisRun'
+        '400':
+          $ref: '#/components/responses/Validation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /history/runs/{runId}:
+    get:
+      tags: [History]
+      operationId: getAnalysisRun
+      summary: Get one of the user's analysis runs
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: The run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisRun'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: SESSION
+      description: Session cookie issued by `/auth/register` and `/auth/login`.
+
+  parameters:
+    CityIds:
+      name: cityIds
+      in: query
+      required: true
+      style: form
+      explode: false
+      description: Comma-separated city ids.
+      schema:
+        type: array
+        minItems: 1
+        items: { type: string }
+      example: lisbon,london,kyiv
+
+  responses:
+    Validation:
+      description: Validation error (`VALIDATION`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    Unauthorized:
+      description: Not signed in or wrong credentials (`UNAUTHORIZED`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    Forbidden:
+      description: Not the owner (`FORBIDDEN`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    NotFound:
+      description: Resource not found or not visible to the caller (`NOT_FOUND`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    Conflict:
+      description: Conflict, e.g. email already registered (`CONFLICT`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    Upstream:
+      description: Weather provider unavailable (`UPSTREAM`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+
+  schemas:
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum: [UNAUTHORIZED, FORBIDDEN, NOT_FOUND, VALIDATION, CONFLICT, UPSTREAM]
+          description: |
+            HTTP mapping: VALIDATION=400, UNAUTHORIZED=401, FORBIDDEN=403,
+            NOT_FOUND=404, CONFLICT=409, UPSTREAM=502.
+        message:
+          type: string
+
+    User:
+      type: object
+      required: [id, email]
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+
+    Credentials:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6, format: password }
+
+    Metric:
+      type: string
+      enum:
+        - temperature
+        - apparentTemperature
+        - precipitation
+        - windSpeed
+        - humidity
+        - pressure
+        - snowfall
+        - weatherCode
+
+    PeriodRange:
+      type: string
+      description: |
+        last7/last30/last90 are historical (7/30/90 days); next7/next14 are forecast (7/14 days).
+      enum: [last7, last30, last90, next7, next14]
+
+    DataCategory:
+      type: string
+      enum: [current, forecast, historical]
+
+    Severity:
+      type: string
+      enum: [low, medium, high]
+
+    Visibility:
+      type: string
+      enum: [private, public]
+
+    City:
+      type: object
+      required: [id, name, country, lat, lon]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        country: { type: string }
+        lat: { type: number, format: double }
+        lon: { type: number, format: double }
+
+    DashboardSettings:
+      type: object
+      required: [chartType, showTable, showInsights]
+      properties:
+        chartType: { type: string, enum: [line, bar] }
+        showTable: { type: boolean }
+        showInsights: { type: boolean }
+
+    ViewConfig:
+      type: object
+      required: [cityIds, period, metrics, dashboard]
+      properties:
+        cityIds:
+          type: array
+          minItems: 1
+          items: { type: string }
+        period: { $ref: '#/components/schemas/PeriodRange' }
+        metrics:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/Metric' }
+        dashboard: { $ref: '#/components/schemas/DashboardSettings' }
+
+    ViewCreate:
+      allOf:
+        - $ref: '#/components/schemas/ViewConfig'
+        - type: object
+          required: [name, visibility]
+          properties:
+            name:
+              type: string
+              description: Blank names are stored as "Untitled view".
+            visibility: { $ref: '#/components/schemas/Visibility' }
+
+    ViewPatch:
+      type: object
+      description: Any subset of the view fields.
+      properties:
+        name: { type: string }
+        visibility: { $ref: '#/components/schemas/Visibility' }
+        cityIds:
+          type: array
+          minItems: 1
+          items: { type: string }
+        period: { $ref: '#/components/schemas/PeriodRange' }
+        metrics:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/Metric' }
+        dashboard: { $ref: '#/components/schemas/DashboardSettings' }
+
+    SavedView:
+      allOf:
+        - $ref: '#/components/schemas/ViewConfig'
+        - type: object
+          required: [id, ownerId, name, visibility, createdAt, updatedAt]
+          properties:
+            id: { type: string }
+            ownerId: { type: string }
+            name: { type: string }
+            visibility: { $ref: '#/components/schemas/Visibility' }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+
+    PersonalDashboard:
+      oneOf:
+        - $ref: '#/components/schemas/PersonalDashboardSaved'
+        - $ref: '#/components/schemas/PersonalDashboardDefault'
+      discriminator:
+        propertyName: source
+        mapping:
+          saved: '#/components/schemas/PersonalDashboardSaved'
+          default: '#/components/schemas/PersonalDashboardDefault'
+
+    PersonalDashboardSaved:
+      type: object
+      required: [source, view]
+      properties:
+        source: { type: string, enum: [saved] }
+        view: { $ref: '#/components/schemas/SavedView' }
+
+    PersonalDashboardDefault:
+      type: object
+      required: [source, config]
+      properties:
+        source: { type: string, enum: [default] }
+        config: { $ref: '#/components/schemas/ViewConfig' }
+
+    MetricValues:
+      type: object
+      description: Value for every metric. `weatherCode` is a WMO-style category code.
+      required:
+        - temperature
+        - apparentTemperature
+        - precipitation
+        - windSpeed
+        - humidity
+        - pressure
+        - snowfall
+        - weatherCode
+      properties:
+        temperature: { type: number, description: "°C" }
+        apparentTemperature: { type: number, description: "°C" }
+        precipitation: { type: number, description: mm }
+        windSpeed: { type: number, description: km/h }
+        humidity: { type: number, description: "%" }
+        pressure: { type: number, description: hPa }
+        snowfall: { type: number, description: cm }
+        weatherCode: { type: integer }
+
+    CurrentWeather:
+      type: object
+      required: [cityId, observedAt, values]
+      properties:
+        cityId: { type: string }
+        observedAt: { type: string, format: date-time }
+        values: { $ref: '#/components/schemas/MetricValues' }
+
+    SeriesPoint:
+      type: object
+      required: [date, values]
+      properties:
+        date: { type: string, format: date }
+        values: { $ref: '#/components/schemas/MetricValues' }
+
+    CitySeries:
+      type: object
+      required: [cityId, points]
+      properties:
+        cityId: { type: string }
+        points:
+          type: array
+          items: { $ref: '#/components/schemas/SeriesPoint' }
+
+    Aggregate:
+      type: object
+      required: [cityId, metric, avg, min, max, sum]
+      properties:
+        cityId: { type: string }
+        metric: { $ref: '#/components/schemas/Metric' }
+        avg: { type: number }
+        min: { type: number }
+        max: { type: number }
+        sum:
+          type: number
+          nullable: true
+          description: Null for metrics where a total is meaningless (e.g. temperature).
+
+    Anomaly:
+      type: object
+      required: [type, cityId, metric, severity, value, baseline, difference, message]
+      properties:
+        type: { type: string, enum: [anomaly] }
+        cityId: { type: string }
+        metric: { $ref: '#/components/schemas/Metric' }
+        severity: { $ref: '#/components/schemas/Severity' }
+        value: { type: number }
+        baseline: { type: number }
+        difference: { type: number, description: value minus baseline }
+        message: { type: string }
+
+    Trend:
+      type: object
+      required: [cityId, metric, direction, strength, slopePerDay, message]
+      properties:
+        cityId: { type: string }
+        metric: { $ref: '#/components/schemas/Metric' }
+        direction: { type: string, enum: [up, down, flat] }
+        strength: { type: string, enum: [weak, moderate, strong] }
+        slopePerDay: { type: number }
+        message: { type: string }
+
+    AnalysisResult:
+      type: object
+      required: [aggregates, anomalies, trends, insights]
+      properties:
+        aggregates:
+          type: array
+          items: { $ref: '#/components/schemas/Aggregate' }
+        anomalies:
+          type: array
+          description: Sorted by absolute difference, descending.
+          items: { $ref: '#/components/schemas/Anomaly' }
+        trends:
+          type: array
+          items: { $ref: '#/components/schemas/Trend' }
+        insights:
+          type: array
+          description: Concise textual insights derived from the structured results.
+          items: { type: string }
+
+    AnalysisRun:
+      type: object
+      description: Immutable analysis snapshot.
+      required: [id, userId, createdAt, config, cities, dataVersion, result]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        createdAt: { type: string, format: date-time }
+        config:
+          $ref: '#/components/schemas/ViewConfig'
+        cities:
+          type: array
+          description: Snapshot of the analysed cities.
+          items: { $ref: '#/components/schemas/City' }
+        dataVersion:
+          type: string
+          description: Data timestamp/version used, e.g. `historical@v3:2026-06-15T12:00:00.000Z`.
+        result: { $ref: '#/components/schemas/AnalysisResult' }
+
+    Freshness:
+      type: object
+      required: [category, lastUpdated]
+      properties:
+        category: { $ref: '#/components/schemas/DataCategory' }
+        lastUpdated: { type: string, format: date-time }
+
+    RefreshResult:
+      type: object
+      required: [category, lastUpdated, fetchedFromSource]
+      properties:
+        category: { $ref: '#/components/schemas/DataCategory' }
+        lastUpdated: { type: string, format: date-time }
+        fetchedFromSource:
+          type: boolean
+          description: True if the backend called the upstream provider; false if cached data was used.
