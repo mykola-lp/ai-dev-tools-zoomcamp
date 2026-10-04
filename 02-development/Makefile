@@ -13,7 +13,7 @@ dev: ## backend + frontend together (Ctrl+C stops both)
 	$(MAKE) -j2 backend frontend
 
 backend: ## Spring Boot on :8080
-	cd backend && ./mvnw spring-boot:run
+	cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 
 frontend: ## Vite on :5173 (proxies /api to :8080)
 	cd frontend && npm run dev

@@ -12,6 +12,7 @@ CREATE TABLE auth_tokens (
     created_at TEXT NOT NULL,
     expires_at TEXT NOT NULL
 );
+
 CREATE INDEX idx_auth_tokens_user ON auth_tokens (user_id);
 
 CREATE TABLE cities (
@@ -20,7 +21,7 @@ CREATE TABLE cities (
     country TEXT NOT NULL,
     lat     REAL NOT NULL,
     lon     REAL NOT NULL,
-    on_map  INTEGER NOT NULL DEFAULT 0
+    on_map  BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE saved_cities (
@@ -40,11 +41,12 @@ CREATE TABLE views (
     period        TEXT NOT NULL,
     metrics       TEXT NOT NULL,
     chart_type    TEXT NOT NULL,
-    show_table    INTEGER NOT NULL,
-    show_insights INTEGER NOT NULL,
+    show_table    BOOLEAN NOT NULL,
+    show_insights BOOLEAN NOT NULL,
     created_at    TEXT NOT NULL,
     updated_at    TEXT NOT NULL
 );
+
 CREATE INDEX idx_views_owner_updated ON views (owner_id, updated_at);
 
 -- Immutable snapshots. Deliberately NO foreign key to views: editing or deleting a view
@@ -58,6 +60,7 @@ CREATE TABLE analysis_runs (
     data_version TEXT NOT NULL,
     result_json  TEXT NOT NULL
 );
+
 CREATE INDEX idx_runs_user_created ON analysis_runs (user_id, created_at);
 
 CREATE TABLE current_weather (

@@ -3,6 +3,9 @@ services:
     build:
       context: ./backend
       dockerfile: dev.Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_PATH: /data/weather.db
     volumes:
       - dbdata:/data
 
