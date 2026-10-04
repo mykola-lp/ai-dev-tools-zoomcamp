@@ -3,15 +3,19 @@ ifneq ($(wildcard /usr/lib/jvm/java-25-openjdk-amd64),)
 export JAVA_HOME := /usr/lib/jvm/java-25-openjdk-amd64
 endif
 
-.PHONY: dev backend frontend install build test docker-build docker-run docker-stop clean
+.PHONY: dev backend frontend install build test \
+        test-be test-fe \
+        docker-build docker-run docker-stop \
+        docker-dev-build docker-dev-run docker-dev-stop \
+        clean
 
-dev:            ## backend + frontend together (Ctrl+C stops both)
+dev: ## backend + frontend together (Ctrl+C stops both)
 	$(MAKE) -j2 backend frontend
 
-backend:        ## Spring Boot on :8080
+backend: ## Spring Boot on :8080
 	cd backend && ./mvnw spring-boot:run
 
-frontend:       ## Vite on :5173 (proxies /api to :8080)
+frontend: ## Vite on :5173 (proxies /api to :8080)
 	cd frontend && npm run dev
 
 install:
@@ -24,6 +28,21 @@ build:
 test:
 	cd backend && ./mvnw -B test
 	cd frontend && npm test
+	
+test-be:
+	cd backend && ./mvnw -B test
+
+test-fe:
+	cd frontend && npm test
+
+docker-dev-build:
+	docker compose -f docker-compose.dev.yml build
+
+docker-dev-run:
+	docker compose -f docker-compose.dev.yml up
+
+docker-dev-stop:
+	docker compose -f docker-compose.dev.yml down
 
 docker-build:
 	docker compose build
