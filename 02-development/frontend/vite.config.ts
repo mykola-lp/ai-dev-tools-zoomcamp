@@ -6,10 +6,21 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+const API_TARGET = process.env["API_TARGET"] ?? "http://localhost:8080";
+
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
+  },
+  vite: {
+    server: {
+      port: 5173,
+      strictPort: true,
+      proxy: {
+        "/api": { target: API_TARGET, changeOrigin: true },
+      },
+    },
   },
 });
