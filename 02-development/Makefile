@@ -8,6 +8,7 @@ endif
 		e2e e2e-install \
 		integration integration-install \
         docker-build docker-run docker-stop \
+		docker-ci-build docker-ci-run docker-ci-stop \
         docker-dev-build docker-dev-run docker-dev-stop \
         clean
 
@@ -57,6 +58,15 @@ docker-dev-run:
 
 docker-dev-stop:
 	docker compose -f docker-compose.dev.yml down
+
+docker-ci-build:
+	docker compose -f docker-compose.yml -f docker-compose.ci.yml build
+
+docker-ci-run:
+	docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d
+
+docker-ci-stop:
+	docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
 
 docker-build:
 	docker compose build

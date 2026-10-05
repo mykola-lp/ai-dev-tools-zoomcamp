@@ -1,0 +1,17 @@
+services:
+  backend:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/weather
+      SPRING_DATASOURCE_USERNAME: weather
+      SPRING_DATASOURCE_PASSWORD: weather
+      SEED_ENABLED: "true"
+      APP_WEATHER_SCHEDULER_ENABLED: "false"
+      OPEN_METEO_BASE_URL: http://127.0.0.1:9
+
+  postgres:
+    volumes:
+      - postgres_ci_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_ci_data:
