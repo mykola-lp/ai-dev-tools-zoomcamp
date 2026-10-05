@@ -6,40 +6,45 @@ services:
       POSTGRES_USER: weather
       POSTGRES_PASSWORD: weather
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+    - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+    - 5432:5432
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U weather -d weather"]
+      test:
+      - CMD-SHELL
+      - pg_isready -U weather -d weather
       interval: 5s
       timeout: 5s
       retries: 10
-
   backend:
-    build: ./backend
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/weather
       SPRING_DATASOURCE_USERNAME: weather
       SPRING_DATASOURCE_PASSWORD: weather
+      OTEL_SERVICE_NAME: weather-backend
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
     depends_on:
       postgres:
         condition: service_healthy
-
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-weather-analytics}/weather-backend:${APP_VERSION:-prod}
+    build: ./backend
   frontend:
-    build: ./frontend
     depends_on:
-      - backend
-
+    - backend
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-weather-analytics}/weather-frontend:${APP_VERSION:-prod}
+    build: ./frontend
   gateway:
     image: nginx:alpine
     ports:
-      - "8000:80"
+    - 8000:80
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
-      - backend
-      - frontend
-
+    - backend
+    - frontend
 volumes:
-  postgres_data:
+  postgres_data: {}
