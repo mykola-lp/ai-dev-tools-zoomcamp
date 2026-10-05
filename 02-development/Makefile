@@ -4,7 +4,9 @@ export JAVA_HOME := /usr/lib/jvm/java-25-openjdk-amd64
 endif
 
 .PHONY: dev backend frontend install build test \
-        test-be test-fe e2e e2e-install \
+        test-be test-fe \
+		e2e e2e-install \
+		integration integration-install \
         docker-build docker-run docker-stop \
         docker-dev-build docker-dev-run docker-dev-stop \
         clean
@@ -40,6 +42,12 @@ e2e: ## full-stack browser tests (starts its own backend + frontend)
 
 e2e-install: ## one-time: Playwright + Chromium
 	cd e2e && npm install && npx playwright install chromium
+
+integration: ## backend API integration tests (starts its own backend on :19080)
+	cd integration-tests && npx vitest run
+
+integration-install: ## one-time: install the integration test dependencies
+	cd integration-tests && npm install
 
 docker-dev-build:
 	docker compose -f docker-compose.dev.yml build
