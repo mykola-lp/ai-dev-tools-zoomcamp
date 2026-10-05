@@ -1,0 +1,65 @@
+name: Promote to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to promote (e.g., v1.0.0)'
+        required: true
+        default: 'prod'
+
+env:
+  REGISTRY: ghcr.io
+  # Change weather-analytics to your actual GitHub org/username
+  IMAGE_NAME_BACKEND: ${{ github.repository_owner }}/weather-backend
+  IMAGE_NAME_FRONTEND: ${{ github.repository_owner }}/weather-frontend
+
+jobs:
+  promote:
+    name: Promote Dev Images to Prod
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull, Retag and Push Backend Image
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:dev
+          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:dev ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:${{ github.event.inputs.version }}
+          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:dev ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:prod
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:${{ github.event.inputs.version }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:prod
+
+      - name: Pull, Retag and Push Frontend Image
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:dev
+          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:dev ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:${{ github.event.inputs.version }}
+          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:dev ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:prod
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:${{ github.event.inputs.version }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:prod
+
+  # Optional: Automatically deploy to your server via SSH
+  # deploy:
+  #   name: Deploy to Production Server
+  #   needs: promote
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Trigger Deploy on Server
+  #       uses: appleboy/ssh-action@v1.0.0
+  #       with:
+  #         host: ${{ secrets.PROD_HOST }}
+  #         username: ${{ secrets.PROD_USERNAME }}
+  #         key: ${{ secrets.PROD_SSH_KEY }}
+  #         script: |
+  #           cd /opt/weather-analytics/02-development
+  #           echo "APP_VERSION=${{ github.event.inputs.version }}" > .env
+  #           docker compose -f docker-compose.yml pull
+  #           docker compose -f docker-compose.yml up -d
