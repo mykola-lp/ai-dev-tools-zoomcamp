@@ -39,6 +39,8 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/etc/grafana/dashboards
+      - ./grafana/provisioning/alerting:/etc/grafana/provisioning/alerting
     depends_on:
       - prometheus
       - loki

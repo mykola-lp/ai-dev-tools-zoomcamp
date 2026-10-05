@@ -6,6 +6,12 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: dev
       DB_PATH: /data/weather.db
+      OTEL_SERVICE_NAME: weather-backend
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=dev,service.version=dev
     volumes:
       - dbdata:/data
 

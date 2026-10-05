@@ -1,0 +1,29 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: "Canvas Alerts"
+    folder: "Interview Alerts"
+    interval: 1m
+    rules:
+      - uid: canvas_failures_alert
+        title: "High Canvas Component Creation Failures"
+        condition: A
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: Prometheus
+            model:
+              expr: sum by (service_name, deployment_environment, service_version) (rate(component_creation_failures_total[5m])) > 5
+              refId: A
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Too many canvas component creation failures!"
+          description: "Over 5 failures per second in the last 5 minutes. Real user impact is high."
+          dashboardURL: "http://localhost:3000/d/interview-metrics"
+        labels:
+          severity: critical
+          owner: "team-interview"
